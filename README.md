@@ -23,6 +23,18 @@ The fishing goes on, one salmon after another, until you move, leave the water o
 - **Skill-ups:** every catch attempt can raise fishing skill, as with a bobber.
 - You need to know Fishing.
 
+## Fishing pools
+
+Pools (schools of fish) work as they do for a bobber:
+
+- Roar with a pool within 12 yards and the salmon waits in the middle of the pool instead of in
+  front of you. A salmon from further out leaps faster, so every leap takes about the same time.
+- A salmon that leapt out of a pool is a **sure catch**, and instead of a body to loot it opens
+  the **pool's own loot**, like a bobber in a pool.
+- Each catch uses up one of the pool's catches. When it's empty the pool despawns and moves on as
+  usual, and the next salmon gives the zone's ordinary fishing loot.
+- The Idol of Voracity's salmon also come out of a nearby pool if there is one.
+
 ## The quest chain
 
 **Tavar Riverclaw** <Druid of the Claw>, a tauren druid on the south shore of Lake Elune'ara in
@@ -105,6 +117,7 @@ Everything is in `mod_swipe_fishing.conf.dist`, with defaults:
 | `SwipeFishing.MinCatchChance` | 50 | Lowest catch chance, in %; 0 for pure fishing rules |
 | `SwipeFishing.CorpseSeconds` | 60 | How long a caught salmon stays for looting |
 | `SwipeFishing.SpotDistance` | 4.5 | How far in front of you the salmon waits, in yards |
+| `SwipeFishing.PoolReach` | 12 | A pool this close when you roar is where the salmon waits |
 | `SwipeFishing.BigFishChance` | 20 | Chance of the Twenty-Six Pound Salmon while its quest is open |
 | `SwipeFishing.Salmon.SkillPerDamage` | 5 | Fishing skill per point of extra Swipe damage |
 | `SwipeFishing.Helm.SkillBonus` / `Duration` | 25 / 60000 | Fishing buff on taking Bear Form |

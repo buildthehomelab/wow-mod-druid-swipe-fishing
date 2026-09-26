@@ -12,6 +12,10 @@
  * skill against the zone's fishing level, and a skill-up check on every attempt. The salmon is a
  * creature, so quests can ask for it by kill credit.
  *
+ * Fishing pools work as they do for a bobber. Roar with a pool in reach and the salmon waits
+ * inside it. A salmon caught inside a pool's radius is a sure catch and opens the pool's own loot,
+ * which uses up one of the pool's catches, so it runs out and despawns as usual.
+ *
  * Nothing here needs a client patch: the druid casts Swipe, which bears always can, not Fishing,
  * which the client refuses in Bear Form or without a pole.
  *
@@ -27,7 +31,11 @@
 
 #include "Chat.h"
 #include "Config.h"
+#include "CellImpl.h"
 #include "CreatureAI.h"
+#include "GameObject.h"
+#include "GridNotifiers.h"
+#include "GridNotifiersImpl.h"
 #include "LootMgr.h"
 #include "Map.h"
 #include "MotionMaster.h"
@@ -77,8 +85,10 @@ namespace
     constexpr float FISH_DEPTH     = 0.4f;  // How far under the surface a waiting fish swims
     constexpr float MIN_WATER_DEPTH = 0.6f; // Shallower than this is no place for a salmon
     constexpr float LAND_DISTANCE  = 1.5f;  // Where a leaping fish lands, in front of the bear
-    constexpr float LEAP_SPEED     = 5.0f;  // Horizontal speed of a leap, yards per second
+    constexpr float LEAP_TIME      = 0.8f;  // Seconds a leap takes, however far it goes
+    constexpr float MIN_LEAP_SPEED = 3.0f;  // Yards per second
     constexpr float LEAP_HEIGHT    = 2.5f;
+    constexpr float POOL_CATCH_RANGE = 20.0f + CONTACT_DISTANCE; // The core's search range for a bobber
     constexpr float MAX_ANCHOR_DRIFT = 2.5f; // Moving further than this from where you roared ends it
     constexpr Milliseconds OWNER_CHECK_INTERVAL = 500ms;
 
@@ -96,6 +106,7 @@ namespace
         uint32 minCatchChance = 50;
         uint32 corpseSeconds = 60;
         float spotDistance = 4.5f;
+        float poolReach = 12.0f;
         uint32 bigFishChance = 20;
 
         uint32 salmonSkillPerDamage = 5;
@@ -169,6 +180,73 @@ namespace
 
         spot.Relocate(x, y, liquid.Level - FISH_DEPTH, Position::NormalizeOrientation(o + float(M_PI)));
         return true;
+    }
+
+    // Finds the nearest spawned fishing pool whose centre is within `range` of `obj`.
+    class NearestFishingPoolInRange
+    {
+    public:
+        NearestFishingPoolInRange(WorldObject const& obj, float range) : _obj(obj), _range(range) { }
+
+        bool operator()(GameObject* go)
+        {
+            if (go->GetGoType() != GAMEOBJECT_TYPE_FISHINGHOLE || !go->isSpawned() || !_obj.IsWithinDistInMap(go, _range))
+                return false;
+
+            _range = _obj.GetDistance(go);
+            return true;
+        }
+
+    private:
+        WorldObject const& _obj;
+        float _range;
+    };
+
+    // A fishing pool in reach of the player, if there is one: the salmon waits in its middle.
+    bool FindPoolSpot(Player* player, Position& spot)
+    {
+        if (config.poolReach <= 0.0f)
+            return false;
+
+        GameObject* pool = nullptr;
+        NearestFishingPoolInRange check(*player, config.poolReach);
+        Acore::GameObjectLastSearcher<NearestFishingPoolInRange> searcher(player, pool, check);
+        Cell::VisitObjects(player, searcher, config.poolReach);
+
+        if (!pool || !player->IsWithinLOSInMap(pool))
+            return false;
+
+        spot.Relocate(pool->GetPositionX(), pool->GetPositionY(), pool->GetPositionZ() - FISH_DEPTH,
+            pool->GetAbsoluteAngle(player));
+        return true;
+    }
+
+    // The core's test for a bobber in a pool (NearestGameObjectFishingHole), made for a point
+    // instead of an object: a spawned pool whose radius covers `spot`.
+    class FishingPoolAtSpot
+    {
+    public:
+        explicit FishingPoolAtSpot(Position const& spot) : _spot(spot) { }
+
+        bool operator()(GameObject* go) const
+        {
+            return go->GetGoType() == GAMEOBJECT_TYPE_FISHINGHOLE && go->isSpawned()
+                && go->GetExactDist(&_spot) <= std::min(POOL_CATCH_RANGE, float(go->GetGOInfo()->fishinghole.radius));
+        }
+
+    private:
+        Position const& _spot;
+    };
+
+    // The pool a salmon came out of, if any. It's judged by where it waited, not where it
+    // landed: it leapt out of the pool even if it's lying at the bear's feet now.
+    GameObject* GetPoolAt(Creature* fish, Position const& spot)
+    {
+        GameObject* pool = nullptr;
+        FishingPoolAtSpot check(spot);
+        Acore::GameObjectSearcher<FishingPoolAtSpot> searcher(fish, pool, check);
+        Cell::VisitObjects(fish, searcher, fish->GetExactDist(&spot) + POOL_CATCH_RANGE);
+        return pool;
     }
 
     // A visible buff with a custom amount: `amount` per stack on its first aura effect of the given
@@ -367,12 +445,13 @@ struct npc_swipe_fishing_salmon : public CreatureAI
         if (z <= INVALID_HEIGHT)
             z = owner->GetPositionZ();
 
-        float const distance = me->GetExactDist(x, y, z);
+        // A salmon from a pool further out leaps faster, so every leap takes about as long.
+        float const speedXY = std::max(MIN_LEAP_SPEED, me->GetExactDist2d(x, y) / LEAP_TIME);
         float const speedZ = std::sqrt(2.0f * GRAVITY * LEAP_HEIGHT);
-        me->GetMotionMaster()->MoveJump(x, y, z, LEAP_SPEED, speedZ, POINT_LANDED);
+        me->GetMotionMaster()->MoveJump(x, y, z, speedXY, speedZ, POINT_LANDED);
 
         // In case the movement never reports back.
-        _events.ScheduleEvent(EVENT_LANDED, Milliseconds(uint32(distance / LEAP_SPEED * 1000.0f) + 300));
+        _events.ScheduleEvent(EVENT_LANDED, Milliseconds(uint32(me->GetExactDist2d(x, y) / speedXY * 1000.0f) + 300));
     }
 
     void Landed()
@@ -395,8 +474,9 @@ struct npc_swipe_fishing_salmon : public CreatureAI
         _events.CancelEvent(EVENT_ESCAPE);
         _events.CancelEvent(EVENT_LANDED);
 
-        me->GetMotionMaster()->MoveJump(_spot, LEAP_SPEED * 1.5f, std::sqrt(2.0f * GRAVITY * 1.5f), POINT_BACK_IN_WATER);
-        _events.ScheduleEvent(EVENT_BACK_IN_WATER, 1500ms);
+        float const speedXY = std::max(MIN_LEAP_SPEED, me->GetExactDist2d(&_spot) / LEAP_TIME);
+        me->GetMotionMaster()->MoveJump(_spot, speedXY, std::sqrt(2.0f * GRAVITY * 1.5f), POINT_BACK_IN_WATER);
+        _events.ScheduleEvent(EVENT_BACK_IN_WATER, Milliseconds(uint32(LEAP_TIME * 1000.0f) + 700));
     }
 
     void BackInWater()
@@ -435,8 +515,13 @@ struct npc_swipe_fishing_salmon : public CreatureAI
 
     void TryCatch(Player* player)
     {
+        // Like a bobber in a pool, a salmon from a pool is a sure catch.
+        GameObject* pool = GetPoolAt(me, _spot);
+
         int32 skill, zoneSkill;
-        int32 const chance = GetCatchChance(player, me, skill, zoneSkill);
+        int32 chance = GetCatchChance(player, me, skill, zoneSkill);
+        if (pool)
+            chance = 100;
         int32 const roll = irand(1, 100);
 
         // Every attempt can raise fishing skill, as with a bobber.
@@ -450,6 +535,7 @@ struct npc_swipe_fishing_salmon : public CreatureAI
         }
 
         _state = State::Caught;
+        _poolCatch = pool ? pool->GetGUID() : ObjectGuid::Empty;
         _events.Reset();
         me->GetMotionMaster()->Clear();
         me->SetLootRecipient(player);
@@ -462,12 +548,23 @@ struct npc_swipe_fishing_salmon : public CreatureAI
         if (!owner)
             return;
 
-        // Unit::Kill has already cleared the (empty) creature loot; the catch is fishing loot.
-        FillFishLoot(me, owner);
-        if (!me->loot.empty())
+        // Caught from a pool: open the pool's loot, as the core does for a bobber. Closing it uses
+        // up one of the pool's catches. The salmon's body has nothing, so it goes soon.
+        GameObject* pool = _poolCatch ? ObjectAccessor::GetGameObject(*me, _poolCatch) : nullptr;
+        if (pool && pool->isSpawned())
         {
-            me->SetDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
-            me->SetCorpseRemoveTime(config.corpseSeconds);
+            pool->Use(owner);
+            me->DespawnOrUnsummon(3s);
+        }
+        else
+        {
+            // Unit::Kill has already cleared the (empty) creature loot; the catch is fishing loot.
+            FillFishLoot(me, owner);
+            if (!me->loot.empty())
+            {
+                me->SetDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+                me->SetCorpseRemoveTime(config.corpseSeconds);
+            }
         }
 
         if (HasEquipped(owner, ITEM_FISH_HEART_PANTS))
@@ -586,6 +683,7 @@ struct npc_swipe_fishing_salmon : public CreatureAI
 private:
     EventMap _events;
     ObjectGuid _owner;
+    ObjectGuid _poolCatch;
     Position _anchor;
     Position _spot;
     bool _session = false;
@@ -662,9 +760,9 @@ namespace
         }
 
         Position spot;
-        bool found = false;
+        bool found = FindPoolSpot(player, spot);
         for (float distance : { config.spotDistance, config.spotDistance - 1.0f, config.spotDistance - 2.0f })
-            if (distance > LAND_DISTANCE && FindWaterSpot(player, distance, 0.0f, spot))
+            if (!found && distance > LAND_DISTANCE && FindWaterSpot(player, distance, 0.0f, spot))
             {
                 found = true;
                 break;
@@ -692,6 +790,12 @@ namespace
             return;
 
         Position spot;
+        if (FindPoolSpot(player, spot))
+        {
+            SpawnSalmon(player, spot, player->GetPosition(), false, true);
+            return;
+        }
+
         for (float angle : { 0.0f, 0.8f, -0.8f, 1.6f, -1.6f, float(M_PI) })
             if (FindWaterSpot(player, 3.5f, angle, spot))
             {
@@ -795,6 +899,7 @@ public:
         config.minCatchChance  = std::min<uint32>(100, sConfigMgr->GetOption<uint32>("SwipeFishing.MinCatchChance", 50));
         config.corpseSeconds   = sConfigMgr->GetOption<uint32>("SwipeFishing.CorpseSeconds", 60);
         config.spotDistance    = std::clamp(sConfigMgr->GetOption<float>("SwipeFishing.SpotDistance", 4.5f), 2.0f, 8.0f);
+        config.poolReach       = std::clamp(sConfigMgr->GetOption<float>("SwipeFishing.PoolReach", 12.0f), 0.0f, 30.0f);
         config.bigFishChance   = sConfigMgr->GetOption<uint32>("SwipeFishing.BigFishChance", 20);
 
         config.salmonSkillPerDamage = sConfigMgr->GetOption<uint32>("SwipeFishing.Salmon.SkillPerDamage", 5);
