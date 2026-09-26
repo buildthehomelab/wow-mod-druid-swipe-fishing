@@ -1,18 +1,15 @@
 # Swipe Fishing
 
-An [AzerothCore](https://www.azerothcore.org/) (WotLK 3.3.5a) module: druids fish without a fishing
-pole, even as a bear. No client patch needed.
+An [AzerothCore](https://www.azerothcore.org/) (WotLK 3.3.5a) module: druids fish in Bear Form. No
+client patch needed.
 
-With the **Idol of Voracity** in the relic slot:
-
-- **`/roar` casts Fishing for you**, in any form. In Bear Form this is the only way: the 3.3.5
-  client never lets you cast Fishing yourself while shapeshifted.
-- **Fishing needs no pole.** The server accepts the Fishing button without one. Whether your
-  client also accepts it is untested (see [Limits](#limits-and-untested-parts)); `/roar` always
-  works.
+With the **Idol of Voracity** in the relic slot, a druid in **Bear Form** faces the water and types
+**`/roar`**, and Fishing starts, with no pole. The 3.3.5 client never lets you cast Fishing yourself
+while shapeshifted, and a bear can't hold a pole anyway.
 
 It's the normal Fishing spell: your best rank, a real bobber you click, fishing pools, skill-ups
-and the zone's loot, all as usual.
+and the zone's loot, all as usual. **In caster form nothing changes:** Fishing needs a pole and
+looks as it always does.
 
 ## Getting the idol
 
@@ -27,14 +24,14 @@ Stonetalon, the Wetlands, Hillsbrad, Redridge and Duskwood.
 ## The idol
 
 **Idol of Voracity**: relic, druid only, level 20, blue, bind on pickup, unique. **Equip: Increased
-Fishing +5.** Its yellow description says the rest: fish without a pole, and `/roar` in Bear Form.
+Fishing +5.** Its yellow description says the rest: in Bear Form, face the water and `/roar`.
 
 ## How it works
 
 - **The pole rule.** The core checks for a pole in a way no script or trigger flag can skip, even
   when the server casts Fishing itself. So at startup the module takes the requirement off every
-  Fishing rank and checks it itself instead: a pole in the main hand, or the idol. Without either,
-  you get the same "Requires Fishing Pole" error as before.
+  Fishing rank and checks it itself instead: a pole in the main hand, or Bear Form with the idol.
+  Without either, you get the same "Requires Fishing Pole" error as before.
 - **Bear Form.** `/roar` makes the server cast your best Fishing rank for you, skipping the check
   for shapeshift forms. The usual Fishing checks still apply, such as water in front of you, and
   their errors show as usual.
@@ -74,13 +71,13 @@ Rebuild the worldserver: the C++ changed.
 
 | Setting | Default | What it does |
 |---|---|---|
-| `SwipeFishing.Enable` | 1 | 0: the idol does nothing, and Fishing needs a pole again |
-| `SwipeFishing.StartEmote` | 75 | Text emote that casts Fishing with the idol on (75 = `/roar`) |
+| `SwipeFishing.Enable` | 1 | 0: the idol does nothing |
+| `SwipeFishing.StartEmote` | 75 | Text emote that casts Fishing in Bear Form with the idol on (75 = `/roar`) |
 
 ## Turning it off
 
-`SwipeFishing.Enable = 0` makes Fishing need a pole again and the idol does nothing. The quest and
-item stay.
+`SwipeFishing.Enable = 0` makes the idol do nothing: no fishing in Bear Form. The quest and item
+stay.
 
 To remove the module completely:
 
@@ -93,12 +90,11 @@ To remove the module completely:
 
 It compiles against current AzerothCore but hasn't been tested in game yet.
 
-- **The Fishing button without a pole.** If the client checks for a pole itself, before asking the
-  server, it keeps saying "Requires Fishing Pole" even with the idol on, and only `/roar` works.
 - **Clicking the bobber in Bear Form.** Druids can loot in forms, so this should work, but it's
   untested.
-- **The bear's look while fishing.** Bears have no fishing animation, so the bear just stands there
-  while the bobber floats.
+- **The bear's look while fishing.** The bear model has no fishing animation and can't show a
+  pole, so the client plays some other animation, probably just standing, while the bobber floats.
+  A real fishing animation would need a client patch with an edited bear model.
 - **Unequipping mid-cast.** Taking off the pole or the idol mid-cast no longer cancels the fishing
   channel, because Fishing no longer lists a required item.
 - **Tavar's spot.** It comes from terrain data, not from standing there. If he's inside a rock or in

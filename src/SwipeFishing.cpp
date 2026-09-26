@@ -1,19 +1,19 @@
 /*
  * mod-swipe-fishing
  *
- * Druids fish without a fishing pole. With the Idol of Voracity in the relic slot:
+ * Druids fish in Bear Form. With the Idol of Voracity in the relic slot, a druid in Bear Form who
+ * faces water and roars (/roar) casts Fishing, with no pole: the client never lets you cast
+ * Fishing yourself while shapeshifted, and a bear can't hold a pole anyway. In caster form nothing
+ * changes: Fishing needs a pole, as always.
  *
- *   - /roar casts Fishing for you, in any form: Bear Form too, where the client never lets you
- *     cast it yourself.
- *   - The Fishing button needs no pole either, as far as the server is concerned (whether the
- *     client checks for a pole before it even asks the server is untested).
- *
- * It's the core's own Fishing: the bobber, pools, skill-ups and loot are all unchanged.
+ * It's the core's own Fishing: the bobber, pools, skill-ups and loot are all unchanged. The bear
+ * has no fishing animation, so it just stands there while the bobber floats.
  *
  * How: the server insists on a pole for Fishing even when it casts the spell itself, so at
  * startup the module removes that requirement from every Fishing rank and checks it itself
- * instead: a pole or the idol. Without either you get the same "Requires Fishing Pole" as before.
- * /roar casts the druid's best Fishing rank for them, skipping the check for shapeshift forms.
+ * instead: a pole, or Bear Form with the idol. Without either you get the same "Requires Fishing
+ * Pole" as before. /roar casts the druid's best Fishing rank for them, skipping the check for
+ * shapeshift forms.
  *
  * Released under the MIT License.
  */
@@ -65,9 +65,16 @@ namespace
         return proto->Class == ITEM_CLASS_WEAPON && proto->SubClass == ITEM_SUBCLASS_WEAPON_FISHING_POLE;
     }
 
-    bool HasIdol(Player const* player)
+    bool IsBear(Unit const* unit)
     {
-        return config.enabled && player->HasItemOrGemWithIdEquipped(ITEM_IDOL_OF_VORACITY, 1);
+        ShapeshiftForm const form = unit->GetShapeshiftForm();
+        return form == FORM_BEAR || form == FORM_DIREBEAR;
+    }
+
+    // A bear wearing the idol can fish without a pole.
+    bool CanFishAsBear(Player const* player)
+    {
+        return config.enabled && IsBear(player) && player->HasItemOrGemWithIdEquipped(ITEM_IDOL_OF_VORACITY, 1);
     }
 
     // The "Requires Fishing Pole" error, as the core sends it when Fishing still needs a pole.
@@ -92,11 +99,11 @@ namespace
         return 0;
     }
 
-    // /roar with the idol on: cast Fishing, whatever the form. The usual Fishing checks still
-    // apply (water in front, not while moving), and their errors show as usual.
+    // /roar in Bear Form with the idol on: cast Fishing. The usual Fishing checks still apply
+    // (water in front, not while moving), and their errors show as usual.
     void TryRoarFishing(Player* player)
     {
-        if (!HasIdol(player))
+        if (!CanFishAsBear(player))
             return;
 
         uint32 const spellId = GetBestFishingRank(player);
@@ -126,8 +133,8 @@ public:
     }
 
     // The core checks for a pole in a way no script or trigger flag can skip, so take the
-    // requirement off Fishing here; SwipeFishingAllSpellScript puts it back for everyone without
-    // the idol.
+    // requirement off Fishing here; SwipeFishingAllSpellScript puts it back for everyone but a
+    // bear with the idol.
     void OnBeforeWorldInitialized() override
     {
         for (uint32 spellId : FISHING_RANKS)
@@ -144,7 +151,7 @@ class SwipeFishingAllSpellScript : public AllSpellScript
 public:
     SwipeFishingAllSpellScript() : AllSpellScript("SwipeFishingAllSpellScript", { ALLSPELLHOOK_ON_SPELL_CHECK_CAST }) { }
 
-    // Fishing needs a pole or the idol. The core's own error names the item class from the spell,
+    // Fishing needs a pole, or Bear Form and the idol. The core's own error names the item class from the spell,
     // which no longer has one, so send the "Requires Fishing Pole" error ourselves and have the
     // core report nothing.
     void OnSpellCheckCast(Spell* spell, bool strict, SpellCastResult& res) override
@@ -153,7 +160,7 @@ public:
             return;
 
         Player* player = spell->GetCaster() ? spell->GetCaster()->ToPlayer() : nullptr;
-        if (!player || HasFishingPole(player) || HasIdol(player))
+        if (!player || HasFishingPole(player) || CanFishAsBear(player))
             return;
 
         res = SPELL_FAILED_DONT_REPORT;

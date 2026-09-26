@@ -3,15 +3,15 @@
 ########################################
 # mod-swipe-fishing
 #
-# Druids fish without a fishing pole. With the Idol of Voracity equipped, /roar casts Fishing in
-# any form, Bear Form included, and Fishing needs no pole. It's normal fishing: bobber, pools,
-# skill and loot. The idol comes from a druid quest in Moonglade.
+# Druids fish in Bear Form. With the Idol of Voracity equipped, a druid in Bear Form faces the
+# water and types /roar, and Fishing starts, with no pole. It's normal fishing: bobber, pools,
+# skill and loot. Caster form is unchanged: Fishing needs a pole. The idol comes from a druid
+# quest in Moonglade.
 ########################################
 
 #
 #    SwipeFishing.Enable
-#        Description: Master switch. With 0 the idol does nothing and Fishing needs a pole again,
-#                     as in stock AzerothCore.
+#        Description: Master switch. With 0 the idol does nothing: no fishing in Bear Form.
 #        Default:     1
 #
 
@@ -19,8 +19,8 @@ SwipeFishing.Enable = 1
 
 #
 #    SwipeFishing.StartEmote
-#        Description: The text emote that casts Fishing for a druid wearing the idol, as a
-#                     TextEmotes.dbc id. 75 is /roar.
+#        Description: The text emote that casts Fishing for a druid in Bear Form wearing the idol,
+#                     as a TextEmotes.dbc id. 75 is /roar.
 #        Default:     75
 #
 
