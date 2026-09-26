@@ -3,15 +3,15 @@
 ########################################
 # mod-swipe-fishing
 #
-# Druids fish like bears. In Bear Form, standing in water with the Grizzly Helm on, /roar and wait.
+# Druids fish like bears. In Bear Form, standing in water with a salmon relic on, /roar and wait.
 # A salmon leaps out and lands at your feet: Swipe it before it flops back. Catches give the
-# zone's normal fishing loot and use the normal fishing skill rules. The gear comes from a druid
-# quest chain in Moonglade.
+# zone's normal fishing loot and use the normal fishing skill rules. The relic comes from a druid
+# in Moonglade, and he upgrades it at each fishing rank.
 ########################################
 
 #
 #    SwipeFishing.Enable
-#        Description: Master switch for the minigame and the gear's effects.
+#        Description: Master switch for the minigame.
 #        Default:     1
 #
 
@@ -26,12 +26,13 @@ SwipeFishing.Enable = 1
 SwipeFishing.StartEmote = 75
 
 #
-#    SwipeFishing.RequireHelm
-#        Description: 1: only druids wearing the Grizzly Helm can fish. 0: any druid in Bear Form.
+#    SwipeFishing.RequireRelic
+#        Description: 1: only druids wearing a salmon relic (any rank) can fish. 0: any druid in
+#                     Bear Form.
 #        Default:     1
 #
 
-SwipeFishing.RequireHelm = 1
+SwipeFishing.RequireRelic = 1
 
 #
 #    SwipeFishing.SitWhileWaiting
@@ -119,65 +120,6 @@ SwipeFishing.SpotDistance = 4.5
 #
 
 SwipeFishing.PoolReach = 12
-
-#
-#    SwipeFishing.BigFishChance
-#        Description: While "Twenty-Six Pounds" is in your quest log, the chance in percent that
-#                     the next fish is the Twenty-Six Pound Salmon the quest asks for.
-#        Default:     20
-#
-
-SwipeFishing.BigFishChance = 20
-
-########################################
-# The gear
-########################################
-
-#
-#    SwipeFishing.Salmon.SkillPerDamage
-#        Description: 26 Pound Salmon: Swipe deals 1 extra damage per this many points of fishing
-#                     skill, to each target. At 150 skill and 5 that's +30. 0 turns it off.
-#        Default:     5
-#
-
-SwipeFishing.Salmon.SkillPerDamage = 5
-
-#
-#    SwipeFishing.Helm.SkillBonus
-#    SwipeFishing.Helm.Duration
-#        Description: Grizzly Helm: shifting into Bear Form gives this much fishing skill for this
-#                     many milliseconds. SkillBonus 0 turns it off. The buff shows as "Captain
-#                     Rumsey's Lager", whose tooltip always says +10.
-#        Default:     25, 60000
-#
-
-SwipeFishing.Helm.SkillBonus = 25
-SwipeFishing.Helm.Duration = 60000
-
-#
-#    SwipeFishing.Pants.Stamina
-#    SwipeFishing.Pants.MaxStacks
-#    SwipeFishing.Pants.Duration
-#        Description: Fish Heart Pants: every catch gives this much stamina, stacking up to
-#                     MaxStacks times, for Duration milliseconds (refreshed by each catch).
-#                     Stamina 0 turns it off. The buff shows as "Invigorated", whose tooltip
-#                     always says 24 per stack. MaxStacks can't go above 10.
-#        Default:     5, 5, 60000
-#
-
-SwipeFishing.Pants.Stamina = 5
-SwipeFishing.Pants.MaxStacks = 5
-SwipeFishing.Pants.Duration = 60000
-
-#
-#    SwipeFishing.Idol.Chance
-#        Description: Idol of Voracity: the chance in percent, per Swipe that hits an enemy while
-#                     you stand in water, that a salmon leaps out at you. Needs Fishing. 0 turns it
-#                     off.
-#        Default:     15
-#
-
-SwipeFishing.Idol.Chance = 15
 
 ########################################
 # Effects

@@ -3,7 +3,7 @@
 An [AzerothCore](https://www.azerothcore.org/) (WotLK 3.3.5a) module: druids fish like bears. No
 pole, no bobber, just claws. No client patch needed.
 
-Put on the Grizzly Helm, take Bear Form, wade into water and `/roar`. The bear sits and watches
+Put on a salmon relic, take Bear Form, wade into water and `/roar`. The bear sits and watches
 the water. After a while a salmon leaps out and lands at your feet, and you have a moment to
 **Swipe** it:
 
@@ -36,38 +36,38 @@ Pools (schools of fish) work as they do for a bobber:
   the **pool's own loot**, like a bobber in a pool.
 - Each catch uses up one of the pool's catches. When it's empty the pool despawns and moves on as
   usual, and the next salmon gives the zone's ordinary fishing loot.
-- The Idol of Voracity's salmon also come out of a nearby pool if there is one.
 
-## The quest chain
+## The relic
+
+One druid idol that grows with your fishing. There's one per fishing rank, and wearing any of them
+is what lets you fish in Bear Form. They have Stamina and fishing skill, and nothing else.
+
+| Relic | Rank | Level | Stats |
+|---|---|---|---|
+| Ossified Salmon | Journeyman | 16 | +5 Stamina, +5 Fishing |
+| Fossilized Salmon | Expert | 20 | +10 Stamina, +15 Fishing |
+| Petrified Salmon | Artisan | 35 | +15 Stamina, +20 Fishing |
+| Moonstone Salmon | Master | 50 | +20 Stamina, +25 Fishing |
+| Voracious Salmon | Grand Master | 65 | +25 Stamina, +30 Fishing |
+
+All are bind on pickup and unique; the first four are blue and the last is epic. There's no +10
+Fishing step because the client has no +10 fishing item spell.
 
 **Tavar Riverclaw** <Druid of the Claw>, a tauren druid on the south shore of Lake Elune'ara in
-Moonglade, a short walk south of Nighthaven. Every druid can get there with Teleport: Moonglade.
-The quests are for druids of level 16 or higher (when Swipe is learned) who know Fishing, and are
-level 20.
+Moonglade, a short walk south of Nighthaven, gives them out. Every druid can get there with
+Teleport: Moonglade. Each quest opens when you can train the matching fishing rank: the fishing
+skill and the character level that rank needs.
 
-| Quest | Objective | Reward |
-|---|---|---|
-| The Way of the Claw | None: he explains how | Grizzly Helm |
-| Salmon Run | Catch 5 Leaping Salmon | Fish Heart Pants |
-| Twenty-Six Pounds | Catch the Twenty-Six Pound Salmon | 26 Pound Salmon |
-| A Voracious Appetite | Catch 8 Leaping Salmon | Idol of Voracity |
-
-The salmon count wherever you catch them, not only in Moonglade. While "Twenty-Six Pounds" is in
-your quest log, each fish has a 20% chance to be the big one.
-
-## The gear
-
-All blue, bind on pickup, level 20.
-
-| Item | Slot | Stats | Effect |
+| Quest | Needs | Hand in | Reward |
 |---|---|---|---|
-| Grizzly Helm | Head, leather, druid | 72 armor, +8 Spirit, +5 Stamina, +5 Fishing | Needed to fish at all. Taking Bear Form gives +25 Fishing for 1 minute. |
-| Fish Heart Pants | Legs, leather | 84 armor, +8 Stamina, +16 Attack Power, +3 Fishing | Each catch gives +5 Stamina for 1 minute, stacking up to 5 times. |
-| 26 Pound Salmon | Held in off-hand | +4 Strength, +4 Stamina | Swipe deals 1 extra damage per 5 fishing skill, to every target. |
-| Idol of Voracity | Relic, druid | | While you stand in water, each Swipe that hits an enemy has a 15% chance to make a salmon leap at you, in combat too. Catch it with another Swipe. |
+| The Way of the Claw | Fishing 50, level 16 | | Ossified Salmon |
+| Stone and Scale | Fishing 125, level 20 | Ossified Salmon | Fossilized Salmon |
+| The Mountain's Catch | Fishing 200, level 35 | Fossilized Salmon | Petrified Salmon |
+| Under Elune's Light | Fishing 275, level 50 | Petrified Salmon | Moonstone Salmon |
+| The Old Bear's River | Fishing 350, level 65 | Moonstone Salmon | Voracious Salmon |
 
-The 26 Pound Salmon makes Swipe much stronger at level 20: rank 1 Swipe does 9 damage plus about
-6% of attack power, and with 150 fishing skill the fish adds 30 to each target.
+You can hand in the relic you're wearing; there's no need to take it off first. A druid who's
+already past several ranks can do the quests back to back.
 
 ## Without a client patch
 
@@ -75,19 +75,15 @@ The 26 Pound Salmon makes Swipe much stronger at level 20: rank 1 Swipe does 9 d
   pole, so the druid never casts it: the salmon is a creature, and Swipe catches it.
 - **Rage.** A bear out of combat has no rage, and Swipe costs 20. When a salmon leaps you're
   topped up to 25 rage, enough for one Swipe.
-- **Items.** The client takes item icons and models from its own files, by item number. The four
-  items reuse numbers players can't get in 3.3.5, with fitting looks:
-  - 3063 and 3064: an old green leather helm and pants.
-  - 13842: an unused test fish, held like the real salmon.
-  - 25667: a removed TBC idol with a roaring bear icon.
+- **Items.** The client takes item icons from its own files, by item number, and a custom
+  number would show a question mark. So the relics reuse idol numbers players can't get in 3.3.5:
+  - 23004 and 42574, a green idol icon (Ossified and Fossilized Salmon).
+  - 42576 and 42577, a nature idol icon (Petrified and Moonstone Salmon).
+  - 25667, a removed TBC idol with a roaring bear icon (Voracious Salmon).
 
   The module's SQL rewrites their database rows. The uninstall SQL puts the originals back.
-- **Tooltips.** Item effects that aren't stock spells can't have green "Equip:" lines, so each
-  item's yellow description says what it does. The +5 and +3 Fishing are real item spells.
-- **Buffs.** The helm's fishing buff shows as "Captain Rumsey's Lager", and the pants' stamina
-  buff as "Invigorated". Both are buffs the client already has, but their tooltips show the
-  client's own numbers (+10 Fishing, +24 Stamina per stack), not the real ones. Both buffs
-  disappear on logout.
+- **Tooltips.** The "Equip: Fishing skill increased by N" lines are the item spells real fishing
+  gear uses.
 - **Effects.** When a salmon leaps you hear the fishing bobber's bite sound and see a water burst.
   While a salmon waits it splashes now and then, so you can see where it is.
 
@@ -103,12 +99,19 @@ folder name. Re-run CMake, rebuild, and copy `conf/mod_swipe_fishing.conf.dist` 
 `mod_swipe_fishing.conf` in your config folder. The world database SQL in
 `data/sql/db-world/updates` runs automatically on the next worldserver start.
 
-### Back from the idol version
+### Upgrading from older versions
 
-For a while this module was a single idol that let a bear cast Fishing without a pole. That
-version is gone and the salmon minigame is back. If your server ran its SQL (`_01` and `_02`),
-`mod_swipe_fishing_2026_09_26_03.sql` puts the salmon, the quest chain and the gear back on the
-next start. Rebuild the worldserver: the C++ changed.
+- **From the gear version** (helm, pants, off-hand and Idol of Voracity):
+  `mod_swipe_fishing_2026_09_26_04.sql` removes that gear and its quests, puts the reused items'
+  original rows back, and adds the relics and their quests. The quests have new numbers, so
+  druids who did the old chain can do the new one. The Idol of Voracity's item number becomes
+  the Grand Master relic, the Voracious Salmon, so anyone who had the idol now has that (level 65
+  to wear), without the idol's old effect. Anyone with the old helm, pants or off-hand keeps them
+  as the original placeholder items.
+- **From the pole-less idol version** that briefly replaced the minigame: if your server ran its
+  SQL (`_01` and `_02`), `_03` and then `_04` bring the minigame back with the relics.
+
+Rebuild the worldserver either way: the C++ changed.
 
 ## Settings
 
@@ -116,9 +119,9 @@ Everything is in `mod_swipe_fishing.conf.dist`, with defaults:
 
 | Setting | Default | What it does |
 |---|---|---|
-| `SwipeFishing.Enable` | 1 | Master switch for the minigame and the gear's effects |
+| `SwipeFishing.Enable` | 1 | Master switch for the minigame |
 | `SwipeFishing.StartEmote` | 75 | Text emote that starts fishing (75 = `/roar`) |
-| `SwipeFishing.RequireHelm` | 1 | 0 lets any druid in Bear Form fish |
+| `SwipeFishing.RequireRelic` | 1 | 0 lets any druid in Bear Form fish, relic or not |
 | `SwipeFishing.SitWhileWaiting` | 1 | The bear sits while it waits |
 | `SwipeFishing.BiteDelayMin` / `Max` | 5000 / 15000 | Time until a salmon leaps, in ms |
 | `SwipeFishing.CatchWindow` | 1500 | How long a salmon lies at your feet, in ms |
@@ -128,26 +131,18 @@ Everything is in `mod_swipe_fishing.conf.dist`, with defaults:
 | `SwipeFishing.CorpseSeconds` | 60 | How long a caught salmon stays for looting |
 | `SwipeFishing.SpotDistance` | 4.5 | How far in front of you the salmon waits, in yards |
 | `SwipeFishing.PoolReach` | 12 | A pool this close when you roar is where the salmon waits |
-| `SwipeFishing.BigFishChance` | 20 | Chance of the Twenty-Six Pound Salmon while its quest is open |
-| `SwipeFishing.Salmon.SkillPerDamage` | 5 | Fishing skill per point of extra Swipe damage |
-| `SwipeFishing.Helm.SkillBonus` / `Duration` | 25 / 60000 | Fishing buff on taking Bear Form |
-| `SwipeFishing.Pants.Stamina` / `MaxStacks` / `Duration` | 5 / 5 / 60000 | Stamina buff per catch |
-| `SwipeFishing.Idol.Chance` | 15 | Chance per Swipe in water for a salmon to leap |
 | `SwipeFishing.LeapSound` / `SplashSpell` / `RippleSpell` | 3355 / 69665 / 69657 | Sound and visuals, 0 for none |
-
-The item descriptions have the default numbers written in. If you change the gear settings, change
-the descriptions in the SQL too.
 
 ## Turning it off
 
-`SwipeFishing.Enable = 0` stops the minigame and the gear's effects. The quests and items stay.
+`SwipeFishing.Enable = 0` stops the minigame. The quests and relics stay.
 
 To remove the module completely:
 
 1. Delete the module folder and rebuild.
 2. Run `data/sql/uninstall/mod_swipe_fishing_uninstall_world.sql` on the world database by hand;
    AzerothCore doesn't run it. It removes the creatures, quests and script bindings, and restores
-   the four original item rows.
+   the original rows of every item the module reused.
 
 ## Limits and untested parts
 
@@ -160,9 +155,7 @@ yet. Things to check in game:
 - Do the leap arc, the landing spot and the 1.5 second window feel right?
 - Is the red "frenzy" fish model (the Northrend Rainbow Trout's) salmon-like enough?
 - Does the water burst visual (69665) show in the 3.3.5 client?
-- "Invigorated" is also the buff of an Icecrown Citadel tank trinket. A druid wearing that trinket
-  and the pants could see the two mix up.
-- Party members near you also get quest credit for your salmon, like any kill.
+- Do the reused relic numbers show the right icon and equip in the relic slot in your client?
 
 ## License
 

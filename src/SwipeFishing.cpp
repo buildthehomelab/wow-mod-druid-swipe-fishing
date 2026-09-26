@@ -1,8 +1,8 @@
 /*
  * mod-swipe-fishing
  *
- * Druids fish like bears: no pole, just claws. A druid in Bear Form, standing in water with the
- * Grizzly Helm on, roars (/roar) and waits. A salmon circles just under the surface in front of
+ * Druids fish like bears: no pole, just claws. A druid in Bear Form, standing in water with a
+ * salmon relic on, roars (/roar) and waits. A salmon circles just under the surface in front of
  * them; after a while it leaps out and lands at the bear's feet. The druid has a moment to Swipe
  * it. A hit catches it, and its loot opens with whatever normal fishing would give in that spot,
  * counted as fishing for achievements and statistics. Too early and the fish is spooked; too late
@@ -10,8 +10,7 @@
  * the druid moves, leaves the water or leaves Bear Form.
  *
  * Catches follow the core's fishing rules: the zone's fishing loot, a catch chance from fishing
- * skill against the zone's fishing level, and a skill-up check on every attempt. The salmon is a
- * creature, so quests can ask for it by kill credit.
+ * skill against the zone's fishing level, and a skill-up check on every attempt.
  *
  * Fishing pools work as they do for a bobber. Roar with a pool in reach and the salmon waits
  * inside it. A salmon caught inside a pool's radius is a sure catch and opens the pool's own loot,
@@ -20,12 +19,10 @@
  * Nothing here needs a client patch: the druid casts Swipe, which bears always can, not Fishing,
  * which the client refuses in Bear Form or without a pole.
  *
- * The gear, handed out by a short druid quest chain (see the SQL):
- *   - Grizzly Helm: needed to fish at all (configurable). Shifting into Bear Form gives a short
- *     fishing skill buff.
- *   - Fish Heart Pants: every catch gives a stacking stamina buff.
- *   - 26 Pound Salmon (off-hand): Swipe deals extra damage per point of fishing skill.
- *   - Idol of Voracity: Swipe hits in water, in combat or not, can make a salmon leap out.
+ * The relics: one idol per fishing rank, Journeyman to Grand Master, each with Stamina and fishing
+ * skill. Wearing any of them lets a druid fish (configurable). Tavar Riverclaw gives the first, and
+ * each time the druid can train the next fishing rank, he trades their relic for the next one (see
+ * the SQL).
  *
  * Released under the MIT License.
  */
@@ -44,38 +41,32 @@
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "ScriptMgr.h"
-#include "SpellAuraEffects.h"
-#include "SpellAuras.h"
-#include "SpellInfo.h"
-#include "SpellMgr.h"
 #include "SpellScript.h"
 #include "SpellScriptLoader.h"
 #include "TemporarySummon.h"
 #include "WorldSession.h"
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <initializer_list>
 
 namespace
 {
-    // Creatures and quests. Must match the SQL.
-    constexpr uint32 NPC_LEAPING_SALMON          = 9500400;
-    constexpr uint32 NPC_TWENTY_SIX_POUND_SALMON = 9500401;
-    constexpr uint32 QUEST_TWENTY_SIX_POUNDS     = 9500402;
+    // The salmon. Must match the SQL.
+    constexpr uint32 NPC_LEAPING_SALMON = 9500400;
 
-    // The gear. Reused Item.dbc entries, so the client shows a fitting icon and model; the SQL
-    // rewrites their item_template rows.
-    constexpr uint32 ITEM_GRIZZLY_HELM            = 3063;  // Was "Deprecated Deepwood Helm"
-    constexpr uint32 ITEM_FISH_HEART_PANTS        = 3064;  // Was "Deprecated Deepwood Pants"
-    constexpr uint32 ITEM_TWENTY_SIX_POUND_SALMON = 13842; // Was test fish "Fall/Winter Morning"
-    constexpr uint32 ITEM_IDOL_OF_VORACITY        = 25667; // Was "Idol of the Beast", replaced in TBC
+    // The relics, Journeyman to Grand Master. Reused Item.dbc idols players can't get, so the client
+    // shows an idol icon; the SQL rewrites their item_template rows. Must match the SQL.
+    constexpr std::array<uint32, 5> SALMON_RELICS = {
+        23004, // Ossified Salmon     (was "Idol of Longevity")
+        42574, // Fossilized Salmon   (was "Savage Gladiator's Idol of Resolve")
+        42576, // Petrified Salmon    (was "Savage Gladiator's Idol of Tenacity")
+        42577, // Moonstone Salmon    (was "Hateful Gladiator's Idol of Tenacity")
+        25667  // Voracious Salmon    (was "Idol of the Beast", replaced in TBC)
+    };
 
-    // Swipe (Bear) and Bear/Dire Bear Form are bound to the spell scripts below in the SQL.
-    // Visible buffs the client already has, given custom amounts and durations. Their tooltips
-    // still show the client's numbers (+10 Fishing, +24 Stamina per stack).
-    constexpr uint32 SPELL_HELM_FISHING_BUFF  = 45694; // Captain Rumsey's Lager: Fishing skill
-    constexpr uint32 SPELL_PANTS_STAMINA_BUFF = 71575; // Invigorated: stacking Stamina (ICC trinket proc)
+    // Swipe (Bear) is bound to the spell script below in the SQL.
 
     // Movement point ids for MovementInform.
     constexpr uint32 POINT_LANDED        = 1;
@@ -97,7 +88,7 @@ namespace
     {
         bool enabled = true;
         uint32 startEmote = TEXT_EMOTE_ROAR;
-        bool requireHelm = true;
+        bool requireRelic = true;
         bool sitWhileWaiting = true;
         uint32 biteDelayMin = 5000;
         uint32 biteDelayMax = 15000;
@@ -108,15 +99,6 @@ namespace
         uint32 corpseSeconds = 60;
         float spotDistance = 4.5f;
         float poolReach = 12.0f;
-        uint32 bigFishChance = 20;
-
-        uint32 salmonSkillPerDamage = 5;
-        uint32 helmSkillBonus = 25;
-        uint32 helmDuration = 60000;
-        uint32 pantsStamina = 5;
-        uint32 pantsMaxStacks = 5;
-        uint32 pantsDuration = 60000;
-        uint32 idolChance = 15;
 
         uint32 leapSound = 3355;    // "Fishing Hooked", the bobber's bite
         uint32 rippleSpell = 69657; // Water Splash (Self)
@@ -142,14 +124,19 @@ namespace
         return form == FORM_BEAR || form == FORM_DIREBEAR;
     }
 
-    bool HasEquipped(Player const* player, uint32 itemId)
+    // Any of the salmon relics, whatever the rank.
+    bool HasSalmonRelic(Player const* player)
     {
-        return itemId && player->HasItemOrGemWithIdEquipped(itemId, 1);
+        for (uint32 relic : SALMON_RELICS)
+            if (player->HasItemOrGemWithIdEquipped(relic, 1))
+                return true;
+
+        return false;
     }
 
     bool IsSalmon(Unit const* unit)
     {
-        return unit && (unit->GetEntry() == NPC_LEAPING_SALMON || unit->GetEntry() == NPC_TWENTY_SIX_POUND_SALMON);
+        return unit && unit->GetEntry() == NPC_LEAPING_SALMON;
     }
 
     // Standing or swimming in water (not lava or slime).
@@ -250,37 +237,6 @@ namespace
         return pool;
     }
 
-    // A visible buff with a custom amount: `amount` per stack on its first aura effect of the given
-    // type, `duration` long, up to `maxStacks` (the spell's own stack limit still applies).
-    void ApplyBuff(Player* player, uint32 spellId, AuraType auraType, int32 amount, uint32 maxStacks, int32 duration)
-    {
-        if (!spellId || !sSpellMgr->GetSpellInfo(spellId))
-            return;
-
-        Aura* aura = player->GetAura(spellId);
-        if (!aura)
-            aura = player->AddAura(spellId, player);
-        else if (aura->GetStackAmount() < maxStacks)
-            aura->ModStackAmount(1);
-
-        if (!aura)
-            return;
-
-        aura->SetMaxDuration(duration);
-        aura->SetDuration(duration);
-
-        for (uint8 i = 0; i < MAX_SPELL_EFFECTS; ++i)
-        {
-            AuraEffect* effect = aura->GetEffect(i);
-            if (!effect || effect->GetAuraType() != auraType)
-                continue;
-
-            effect->SetCanBeRecalculated(false);
-            effect->ChangeAmount(amount * aura->GetStackAmount());
-            break;
-        }
-    }
-
     // The core's fishing formula (GameObject::Use, fishing bobber): skill against the zone's
     // fishing level, certain at zone level + 95. Never below the configured floor.
     int32 GetCatchChance(Player* player, Creature* fish, int32& skill, int32& zoneSkill)
@@ -319,34 +275,25 @@ namespace
         }
     }
 
-    // Which salmon bites next: the big one sometimes, while its quest is open.
-    uint32 PickSalmonEntry(Player* player)
-    {
-        if (player->GetQuestStatus(QUEST_TWENTY_SIX_POUNDS) == QUEST_STATUS_INCOMPLETE && roll_chance_i(config.bigFishChance))
-            return NPC_TWENTY_SIX_POUND_SALMON;
-
-        return NPC_LEAPING_SALMON;
-    }
-
     void Notify(Player* player, char const* text)
     {
         player->GetSession()->SendAreaTriggerMessage(text);
     }
 
-    Creature* SpawnSalmon(Player* player, Position const& spot, Position const& anchor, bool session, bool leapNow);
+    Creature* SpawnSalmon(Player* player, Position const& spot, Position const& anchor);
 
     // Can this player go on fishing where they started? Checked twice a second while they wait.
     bool CanKeepFishing(Player* player, Position const& anchor)
     {
         return player->IsAlive() && IsBear(player) && IsInWater(player) && !player->IsMounted()
             && player->GetExactDist2d(&anchor) <= MAX_ANCHOR_DRIFT
-            && (!config.requireHelm || HasEquipped(player, ITEM_GRIZZLY_HELM));
+            && (!config.requireRelic || HasSalmonRelic(player));
     }
 }
 
 // The salmon. It waits under the surface, leaps at the bear's feet, and either gets caught by a
-// Swipe or flops back. One fish per player at a time; in a session it goes back to waiting after
-// each leap, and a fresh one takes over when it's caught.
+// Swipe or flops back. One fish per player at a time; it goes back to waiting after each leap, and
+// a fresh one takes over when it's caught.
 struct npc_swipe_fishing_salmon : public CreatureAI
 {
     enum class State
@@ -370,26 +317,18 @@ struct npc_swipe_fishing_salmon : public CreatureAI
 
     explicit npc_swipe_fishing_salmon(Creature* creature) : CreatureAI(creature) { }
 
-    // Called right after the summon. `session`: part of a /roar fishing session, so the fish keeps
-    // coming back and the owner has to stay put. Otherwise a one-off (the idol's), which leaps at
-    // once and is gone after.
-    void Start(Player* owner, Position const& anchor, bool session, bool leapNow)
+    // Called right after the summon. The fish keeps coming back as long as the owner stays put.
+    void Start(Player* owner, Position const& anchor)
     {
         _owner = owner->GetGUID();
         _anchor = anchor;
         _spot = me->GetPosition();
-        _session = session;
 
         me->SetReactState(REACT_PASSIVE);
         me->SetDisableGravity(true);
 
-        if (_session)
-            _events.ScheduleEvent(EVENT_CHECK_OWNER, OWNER_CHECK_INTERVAL);
-
-        if (leapNow)
-            Leap();
-        else
-            Wait(0);
+        _events.ScheduleEvent(EVENT_CHECK_OWNER, OWNER_CHECK_INTERVAL);
+        Wait(0);
     }
 
     Player* GetOwner() const
@@ -422,7 +361,7 @@ struct npc_swipe_fishing_salmon : public CreatureAI
         _events.CancelEvent(EVENT_RIPPLE);
 
         // Out of combat a bear has no rage; the leap gives enough for one Swipe.
-        if (_session && config.rageOnLeap && owner->getPowerType() == POWER_RAGE)
+        if (config.rageOnLeap && owner->getPowerType() == POWER_RAGE)
         {
             int32 const wanted = int32(config.rageOnLeap * 10);
             int32 const current = int32(owner->GetPower(POWER_RAGE));
@@ -436,7 +375,7 @@ struct npc_swipe_fishing_salmon : public CreatureAI
         if (config.leapSound)
             me->PlayDirectSound(config.leapSound, owner);
 
-        Notify(owner, me->GetEntry() == NPC_TWENTY_SIX_POUND_SALMON ? "Something big leaps out of the water! Swipe!" : "A salmon leaps! Swipe!");
+        Notify(owner, "A salmon leaps! Swipe!");
 
         // Land at the bear's feet, on the water or ground there.
         float const toFish = owner->GetAngle(me);
@@ -487,7 +426,7 @@ struct npc_swipe_fishing_salmon : public CreatureAI
 
         _events.CancelEvent(EVENT_BACK_IN_WATER);
 
-        if (_session && GetOwner())
+        if (GetOwner())
             Wait(0);
         else
             End(GetOwner(), nullptr);
@@ -571,12 +510,9 @@ struct npc_swipe_fishing_salmon : public CreatureAI
             }
         }
 
-        if (HasEquipped(owner, ITEM_FISH_HEART_PANTS))
-            ApplyBuff(owner, SPELL_PANTS_STAMINA_BUFF, SPELL_AURA_MOD_STAT, int32(config.pantsStamina), config.pantsMaxStacks, int32(config.pantsDuration));
-
         // The corpse stays for looting; a fresh salmon takes its place in the water.
-        if (_session && CanKeepFishing(owner, _anchor))
-            SpawnSalmon(owner, _spot, _anchor, true, false);
+        if (CanKeepFishing(owner, _anchor))
+            SpawnSalmon(owner, _spot, _anchor);
         else
             End(owner, nullptr);
     }
@@ -595,7 +531,7 @@ struct npc_swipe_fishing_salmon : public CreatureAI
             if (message)
                 Notify(owner, message);
 
-            if (_session && owner->IsSitState())
+            if (owner->IsSitState())
                 owner->SetStandState(UNIT_STAND_STATE_STAND);
         }
 
@@ -690,15 +626,14 @@ private:
     ObjectGuid _poolCatch;
     Position _anchor;
     Position _spot;
-    bool _session = false;
     State _state = State::Waiting;
 };
 
 namespace
 {
-    Creature* SpawnSalmon(Player* player, Position const& spot, Position const& anchor, bool session, bool leapNow)
+    Creature* SpawnSalmon(Player* player, Position const& spot, Position const& anchor)
     {
-        TempSummon* fish = player->SummonCreature(PickSalmonEntry(player), spot, TEMPSUMMON_MANUAL_DESPAWN, 0, 0, nullptr, true);
+        TempSummon* fish = player->SummonCreature(NPC_LEAPING_SALMON, spot, TEMPSUMMON_MANUAL_DESPAWN, 0, 0, nullptr, true);
         if (!fish)
             return nullptr;
 
@@ -710,7 +645,7 @@ namespace
         }
 
         GetFishingData(player)->fish = fish->GetGUID();
-        ai->Start(player, anchor, session, leapNow);
+        ai->Start(player, anchor);
         return fish;
     }
 
@@ -737,7 +672,7 @@ namespace
         if (player->getClass() != CLASS_DRUID || !IsBear(player))
             return;
 
-        if (config.requireHelm && !HasEquipped(player, ITEM_GRIZZLY_HELM))
+        if (config.requireRelic && !HasSalmonRelic(player))
             return;
 
         ChatHandler chat(player->GetSession());
@@ -778,7 +713,7 @@ namespace
             return;
         }
 
-        if (!SpawnSalmon(player, spot, player->GetPosition(), true, false))
+        if (!SpawnSalmon(player, spot, player->GetPosition()))
             return;
 
         if (config.sitWhileWaiting)
@@ -786,114 +721,41 @@ namespace
 
         Notify(player, "You settle in and watch the water...");
     }
-
-    // The idol: a salmon leaps at the druid mid-fight. Any direction with water will do.
-    void TrySpawnIdolSalmon(Player* player)
-    {
-        if (GetCurrentSalmon(player))
-            return;
-
-        Position spot;
-        if (FindPoolSpot(player, spot))
-        {
-            SpawnSalmon(player, spot, player->GetPosition(), false, true);
-            return;
-        }
-
-        for (float angle : { 0.0f, 0.8f, -0.8f, 1.6f, -1.6f, float(M_PI) })
-            if (FindWaterSpot(player, 3.5f, angle, spot))
-            {
-                SpawnSalmon(player, spot, player->GetPosition(), false, true);
-                return;
-            }
-    }
 }
 
-// Swipe (Bear), every rank. Catches salmon, carries the 26 Pound Salmon's damage bonus and the
-// Idol of Voracity's leaping fish.
+// Swipe (Bear), every rank: a Swipe that hits a salmon tries to catch it, and does no damage.
 class spell_swipe_fishing_swipe : public SpellScript
 {
     PrepareSpellScript(spell_swipe_fishing_swipe);
-
-    // 26 Pound Salmon: extra damage per fishing skill. The core works out school damage when the
-    // spell launches at each target, so the bonus goes into the base value there and the usual
-    // modifiers apply to it.
-    void AddSalmonDamage(SpellEffIndex /*effIndex*/)
-    {
-        if (!config.enabled || !config.salmonSkillPerDamage)
-            return;
-
-        Player* player = GetCaster() ? GetCaster()->ToPlayer() : nullptr;
-        if (!player || IsSalmon(GetHitUnit()) || !HasEquipped(player, ITEM_TWENTY_SIX_POUND_SALMON))
-            return;
-
-        SetEffectValue(GetEffectValue() + int32(player->GetSkillValue(SKILL_FISHING) / config.salmonSkillPerDamage));
-    }
 
     void HandleHit(SpellEffIndex /*effIndex*/)
     {
         Player* player = GetCaster() ? GetCaster()->ToPlayer() : nullptr;
         Unit* target = GetHitUnit();
-        if (!player || !target)
+        if (!player || !IsSalmon(target))
             return;
 
-        if (IsSalmon(target))
-        {
-            PreventHitDamage();
-            if (auto* ai = dynamic_cast<npc_swipe_fishing_salmon*>(target->ToCreature()->AI()))
-                ai->OnSwiped(player);
-            return;
-        }
-
-        // Idol of Voracity: at most one roll per Swipe, however many enemies it hits.
-        if (_idolRolled || !config.enabled || !HasEquipped(player, ITEM_IDOL_OF_VORACITY))
-            return;
-
-        _idolRolled = true;
-        if (player->HasSkill(SKILL_FISHING) && IsInWater(player) && roll_chance_i(config.idolChance))
-            TrySpawnIdolSalmon(player);
+        PreventHitDamage();
+        if (auto* ai = dynamic_cast<npc_swipe_fishing_salmon*>(target->ToCreature()->AI()))
+            ai->OnSwiped(player);
     }
 
     void Register() override
     {
-        OnEffectLaunchTarget += SpellEffectFn(spell_swipe_fishing_swipe::AddSalmonDamage, EFFECT_ALL, SPELL_EFFECT_SCHOOL_DAMAGE);
         OnEffectHitTarget += SpellEffectFn(spell_swipe_fishing_swipe::HandleHit, EFFECT_ALL, SPELL_EFFECT_SCHOOL_DAMAGE);
-    }
-
-    bool _idolRolled = false;
-};
-
-// Bear Form and Dire Bear Form: with the Grizzly Helm on, shifting gives a short fishing buff.
-class spell_swipe_fishing_bear_form : public AuraScript
-{
-    PrepareAuraScript(spell_swipe_fishing_bear_form);
-
-    void AfterApply(AuraEffect const* /*aurEff*/, AuraEffectHandleModes /*mode*/)
-    {
-        if (!config.enabled || !config.helmSkillBonus)
-            return;
-
-        if (Player* player = GetTarget()->ToPlayer())
-            if (HasEquipped(player, ITEM_GRIZZLY_HELM))
-                ApplyBuff(player, SPELL_HELM_FISHING_BUFF, SPELL_AURA_MOD_SKILL, int32(config.helmSkillBonus), 1, int32(config.helmDuration));
-    }
-
-    void Register() override
-    {
-        AfterEffectApply += AuraEffectApplyFn(spell_swipe_fishing_bear_form::AfterApply, EFFECT_0, SPELL_AURA_ANY, AURA_EFFECT_HANDLE_REAL);
     }
 };
 
 class SwipeFishingWorldScript : public WorldScript
 {
 public:
-    SwipeFishingWorldScript() : WorldScript("SwipeFishingWorldScript", { WORLDHOOK_ON_BEFORE_CONFIG_LOAD, WORLDHOOK_ON_BEFORE_WORLD_INITIALIZED }) { }
+    SwipeFishingWorldScript() : WorldScript("SwipeFishingWorldScript", { WORLDHOOK_ON_BEFORE_CONFIG_LOAD }) { }
 
     void OnBeforeConfigLoad(bool /*reload*/) override
     {
         config.enabled         = sConfigMgr->GetOption<bool>("SwipeFishing.Enable", true);
         config.startEmote      = sConfigMgr->GetOption<uint32>("SwipeFishing.StartEmote", TEXT_EMOTE_ROAR);
-        config.requireHelm     = sConfigMgr->GetOption<bool>("SwipeFishing.RequireHelm", true);
+        config.requireRelic    = sConfigMgr->GetOption<bool>("SwipeFishing.RequireRelic", true);
         config.sitWhileWaiting = sConfigMgr->GetOption<bool>("SwipeFishing.SitWhileWaiting", true);
         config.biteDelayMin    = sConfigMgr->GetOption<uint32>("SwipeFishing.BiteDelayMin", 5000);
         config.biteDelayMax    = sConfigMgr->GetOption<uint32>("SwipeFishing.BiteDelayMax", 15000);
@@ -904,27 +766,10 @@ public:
         config.corpseSeconds   = sConfigMgr->GetOption<uint32>("SwipeFishing.CorpseSeconds", 60);
         config.spotDistance    = std::clamp(sConfigMgr->GetOption<float>("SwipeFishing.SpotDistance", 4.5f), 2.0f, 8.0f);
         config.poolReach       = std::clamp(sConfigMgr->GetOption<float>("SwipeFishing.PoolReach", 12.0f), 0.0f, 30.0f);
-        config.bigFishChance   = sConfigMgr->GetOption<uint32>("SwipeFishing.BigFishChance", 20);
-
-        config.salmonSkillPerDamage = sConfigMgr->GetOption<uint32>("SwipeFishing.Salmon.SkillPerDamage", 5);
-        config.helmSkillBonus  = sConfigMgr->GetOption<uint32>("SwipeFishing.Helm.SkillBonus", 25);
-        config.helmDuration    = sConfigMgr->GetOption<uint32>("SwipeFishing.Helm.Duration", 60000);
-        config.pantsStamina    = sConfigMgr->GetOption<uint32>("SwipeFishing.Pants.Stamina", 5);
-        config.pantsMaxStacks  = std::max<uint32>(1, sConfigMgr->GetOption<uint32>("SwipeFishing.Pants.MaxStacks", 5));
-        config.pantsDuration   = sConfigMgr->GetOption<uint32>("SwipeFishing.Pants.Duration", 60000);
-        config.idolChance      = sConfigMgr->GetOption<uint32>("SwipeFishing.Idol.Chance", 15);
 
         config.leapSound       = sConfigMgr->GetOption<uint32>("SwipeFishing.LeapSound", 3355);
         config.rippleSpell     = sConfigMgr->GetOption<uint32>("SwipeFishing.RippleSpell", 69657);
         config.splashSpell     = sConfigMgr->GetOption<uint32>("SwipeFishing.SplashSpell", 69665);
-    }
-
-    // The buffs get custom amounts, which a relog would lose: don't save them.
-    void OnBeforeWorldInitialized() override
-    {
-        for (uint32 spellId : { SPELL_HELM_FISHING_BUFF, SPELL_PANTS_STAMINA_BUFF })
-            if (SpellInfo* spellInfo = const_cast<SpellInfo*>(sSpellMgr->GetSpellInfo(spellId)))
-                spellInfo->AttributesCu |= SPELL_ATTR0_CU_AURA_CANNOT_BE_SAVED;
     }
 };
 
@@ -956,6 +801,5 @@ void AddSwipeFishingScripts()
     new SwipeFishingWorldScript();
     new SwipeFishingPlayerScript();
     RegisterSpellScript(spell_swipe_fishing_swipe);
-    RegisterSpellScript(spell_swipe_fishing_bear_form);
     RegisterCreatureAI(npc_swipe_fishing_salmon);
 }
