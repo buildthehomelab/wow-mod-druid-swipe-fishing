@@ -3,14 +3,13 @@
 An [AzerothCore](https://www.azerothcore.org/) (WotLK 3.3.5a) module: druids fish like bears. No
 pole, no bobber, just claws. No client patch needed.
 
-Put on a salmon relic, take Bear Form, wade into water facing deeper water, and **use the relic**
-(right-click it on the character sheet, or `/use 18` in a macro). The bear sits and watches the
-water. A salmon waits unseen under the surface in front of you, rippling now and then so you can
-see where. When it bites, the water bursts with the fishing bobber's bite sound, and you have 2
-seconds to **Swipe**:
+Put on a salmon relic, take Bear Form, wade into water facing deeper water, and `/roar`. The bear
+sits and watches the water. A salmon waits under the surface in front of you. When it bites,
+it surfaces at your feet with a splash and the fishing bobber's bite sound, and you have 2 seconds
+to **target it and Swipe** (Swipe needs a target; target the fish while you wait):
 
 - **In time** and you catch it. The loot window opens with whatever normal fishing would give in
-  that spot. Like a bobber's, closing it leaves the rest behind.
+  that spot. If you close it, loot the salmon's body for the rest.
 - **Swipe too early** and you scare it off for a few seconds.
 - **Too late** and it gets away; wait for the next bite.
 
@@ -35,7 +34,7 @@ off (or hold Shift) to pick. The server can't change that.
 
 Pools (schools of fish) work as they do for a bobber:
 
-- Start with a pool within 12 yards and the salmon waits in the middle of the pool instead of in
+- Roar with a pool within 12 yards and the salmon waits in the middle of the pool instead of in
   front of you.
 - A salmon in a pool is a **sure catch**, and it opens the **pool's own loot**, like a bobber in a
   pool.
@@ -44,8 +43,8 @@ Pools (schools of fish) work as they do for a bobber:
 
 ## The relic
 
-One druid idol that grows with your fishing. There's one per fishing rank, and using any of them
-is how you fish in Bear Form. They have Stamina and fishing skill, and nothing else.
+One druid idol that grows with your fishing. There's one per fishing rank, and wearing any of them
+is what lets you fish in Bear Form. They have Stamina and fishing skill, and nothing else.
 
 | Relic | Rank | Level | Stats |
 |---|---|---|---|
@@ -77,8 +76,8 @@ already past several ranks can do the quests back to back.
 ## Without a client patch
 
 - **Swipe, not Fishing.** The 3.3.5 client refuses to cast Fishing in Bear Form or without a
-  pole, so the druid never casts it: the salmon is an invisible creature, and a Swipe while it
-  bites catches it. The Swipe doesn't have to hit anything.
+  pole, so the druid never casts it: the salmon is a creature, and a Swipe while it bites
+  catches it.
 - **Rage.** A bear out of combat has no rage, and Swipe costs 20. When a salmon bites you're
   topped up to 25 rage, enough for one Swipe.
 - **Items.** The client takes item icons from its own files, by item number, and a custom
@@ -89,12 +88,9 @@ already past several ranks can do the quests back to back.
 
   The module's SQL rewrites their database rows. The uninstall SQL puts the originals back.
 - **Tooltips.** The "Equip: Fishing skill increased by N" lines are the item spells real fishing
-  gear uses. An item can only be used if it has a use spell, whose text is the "Use:" line, so
-  the relics have Find Fish: "Use: Nearby fishing nodes appear on the minimap." Using a relic
-  turns that tracking on too, which helps you find pools.
+  gear uses.
 - **Effects.** When a salmon bites you hear the fishing bobber's bite sound and see a water burst.
-  While it waits it makes a small splash now and then, so you can see where it is. If that's too
-  easy to mistake for the bite, set `SwipeFishing.RippleSpell = 0`.
+  That splash is the only one: the fish is quiet while it waits.
 
 ## Install
 
@@ -120,10 +116,11 @@ folder name. Re-run CMake, rebuild, and copy `conf/mod_swipe_fishing.conf.dist` 
 - **From the pole-less idol version** that briefly replaced the minigame: if your server ran its
   SQL (`_01` and `_02`), `_03` and then `_04` bring the minigame back with the relics.
 
-- **From the `/roar` version:** `_05` makes the salmon invisible and gives the relics their use.
-  In your `mod_swipe_fishing.conf`, `StartEmote` and `RequireRelic` are gone, and `RageOnLeap` and
-  `LeapSound` are now `RageOnBite` and `BiteSound`. Old names are ignored and the defaults apply.
-  `CatchWindow` now counts from the splash; its default went from 1500 to 2000.
+- **From the leaping-salmon version:** `_05` and `_06` stop the leap (the fish surfaces at your
+  feet with a splash instead). In your `mod_swipe_fishing.conf`, `RequireRelic` and `RippleSpell`
+  are gone (a relic is always needed), and `RageOnLeap` and `LeapSound` are now `RageOnBite` and
+  `BiteSound`. Old names are ignored and the defaults apply. `CatchWindow` now counts from the
+  splash; its default went from 1500 to 2000.
 
 Rebuild the worldserver either way: the C++ changed.
 
@@ -142,8 +139,8 @@ Everything is in `mod_swipe_fishing.conf.dist`, with defaults:
 | `SwipeFishing.MinCatchChance` | 50 | Lowest catch chance, in %; 0 for pure fishing rules |
 | `SwipeFishing.CorpseSeconds` | 60 | How long a caught salmon stays for looting |
 | `SwipeFishing.SpotDistance` | 4.5 | How far in front of you the salmon waits, in yards |
-| `SwipeFishing.PoolReach` | 12 | A pool this close when you start is where the salmon waits |
-| `SwipeFishing.BiteSound` / `SplashSpell` / `RippleSpell` | 3355 / 69665 / 69657 | Sound and visuals, 0 for none |
+| `SwipeFishing.PoolReach` | 12 | A pool this close when you roar is where the salmon waits |
+| `SwipeFishing.BiteSound` / `SplashSpell` | 3355 / 69665 | Sound and visual of the bite, 0 for none |
 
 ## Turning it off
 
@@ -165,8 +162,7 @@ yet. Things to check in game:
   lake, move him with `.npc move`.
 - Does the bear sit in shallow water, and does Swiping stand it up?
 - Is the 2 second window after the splash right?
-- Does the water burst (69665) show on the invisible fish, and does it stand out from the ripples?
-- Can you use the relic in Bear Form, and cast Swipe with nothing in front of you?
+- Does the water burst (69665) show well?
 - Do the reused relic numbers show the right icon and equip in the relic slot in your client?
 
 ## License

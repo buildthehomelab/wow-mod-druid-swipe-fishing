@@ -3,8 +3,8 @@
 ########################################
 # mod-swipe-fishing
 #
-# Druids fish like bears. In Bear Form, standing in water, use your salmon relic and wait. When
-# the water splashes, Swipe before the fish gets away. Catches give the zone's normal fishing loot
+# Druids fish like bears. In Bear Form, standing in water with a salmon relic on, /roar and wait.
+# When the water splashes, Swipe the fish before it gets away. Catches give the zone's normal fishing loot
 # and use the normal fishing skill rules. The relic comes from a druid in Moonglade, and he
 # upgrades it at each fishing rank.
 ########################################
@@ -16,6 +16,14 @@
 #
 
 SwipeFishing.Enable = 1
+
+#
+#    SwipeFishing.StartEmote
+#        Description: The text emote that starts fishing, as a TextEmotes.dbc id. 75 is /roar.
+#        Default:     75
+#
+
+SwipeFishing.StartEmote = 75
 
 #
 #    SwipeFishing.SitWhileWaiting
@@ -93,7 +101,7 @@ SwipeFishing.SpotDistance = 4.5
 #
 #    SwipeFishing.PoolReach
 #        Description: A fishing pool (a school of fish) whose middle is within this many yards of
-#                     you when you start is where the salmon waits, instead of the spot in front of
+#                     you when you roar is where the salmon waits, instead of the spot in front of
 #                     you. A salmon from a pool is a sure catch and gives the pool's loot, using up
 #                     one of the pool's catches, as a bobber would. 0 to ignore pools when choosing
 #                     the spot (a salmon that happens to be in a pool still counts). Up to 30.
@@ -105,7 +113,7 @@ SwipeFishing.PoolReach = 12
 ########################################
 # Effects
 #
-# Existing client sounds and spells for the bite and the waiting fish. 0 for none.
+# Existing client sounds and spells for the bite. 0 for none.
 ########################################
 
 #
@@ -119,13 +127,6 @@ SwipeFishing.PoolReach = 12
 #                     Swipe. 69665 is a water burst.
 #        Default:     69665
 #
-#    SwipeFishing.RippleSpell
-#        Description: Visual-only spell the salmon casts on itself every few seconds while it
-#                     waits, so you can see where it is. 69657 is a small splash. 0 if it's
-#                     too easy to mistake for the bite.
-#        Default:     69657
-#
 
 SwipeFishing.BiteSound = 3355
 SwipeFishing.SplashSpell = 69665
-SwipeFishing.RippleSpell = 69657
