@@ -2,17 +2,17 @@
  * mod-swipe-fishing
  *
  * Druids fish like bears: no pole, just claws. A druid in Bear Form, standing in water with a
- * salmon relic on, roars (/roar) and waits. A salmon circles just under the surface in front of
- * them; after a while it leaps out and lands at the bear's feet. The druid has a moment to Swipe
- * it. A hit catches it, and its loot opens with whatever normal fishing would give in that spot,
- * counted as fishing for achievements and statistics. Too early and the fish is spooked; too late
- * and it flops back into the water. The fishing session goes on, one salmon after another, until
+ * salmon relic on, uses the relic and waits. An unseen salmon waits under the surface in front of
+ * them, rippling now and then; when it bites, the water bursts with the bobber's sound, and the
+ * druid has a moment to Swipe. In time, the catch's loot opens with whatever normal fishing would
+ * give in that spot, counted as fishing for achievements and statistics. Too early and the fish is
+ * spooked; too late and it gets away. The fishing session goes on, one bite after another, until
  * the druid moves, leaves the water or leaves Bear Form.
  *
  * Catches follow the core's fishing rules: the zone's fishing loot, a catch chance from fishing
  * skill against the zone's fishing level, and a skill-up check on every attempt.
  *
- * Fishing pools work as they do for a bobber. Roar with a pool in reach and the salmon waits
+ * Fishing pools work as they do for a bobber. Start with a pool in reach and the salmon waits
  * inside it. A salmon caught inside a pool's radius is a sure catch and opens the pool's own loot,
  * which uses up one of the pool's catches, so it runs out and despawns as usual.
  *
@@ -20,7 +20,7 @@
  * which the client refuses in Bear Form or without a pole.
  *
  * The relics: one idol per fishing rank, Journeyman to Grand Master, each with Stamina and fishing
- * skill. Wearing any of them lets a druid fish (configurable). Tavar Riverclaw gives the first, and
+ * skill. Using any of them starts fishing. Tavar Riverclaw gives the first, and
  * each time the druid can train the next fishing rank, he trades their relic for the next one (see
  * the SQL).
  *
@@ -36,7 +36,6 @@
 #include "GridNotifiersImpl.h"
 #include "LootMgr.h"
 #include "Map.h"
-#include "MotionMaster.h"
 #include "ObjectAccessor.h"
 #include "ObjectMgr.h"
 #include "Player.h"
@@ -54,7 +53,7 @@
 namespace
 {
     // The salmon. Must match the SQL.
-    constexpr uint32 NPC_LEAPING_SALMON = 9500400;
+    constexpr uint32 NPC_SALMON = 9500400;
 
     // The relics, Journeyman to Grand Master. Reused Item.dbc idols players can't get, so the client
     // shows an idol icon; the SQL rewrites their item_template rows. Must match the SQL.
@@ -68,39 +67,29 @@ namespace
 
     // Swipe (Bear) is bound to the spell script below in the SQL.
 
-    // Movement point ids for MovementInform.
-    constexpr uint32 POINT_LANDED        = 1;
-    constexpr uint32 POINT_BACK_IN_WATER = 2;
-
     constexpr uint32 WATER_LIQUIDS = MAP_LIQUID_TYPE_WATER | MAP_LIQUID_TYPE_OCEAN;
-    constexpr float GRAVITY        = 19.29110527038574f; // Movement::gravity
     constexpr float FISH_DEPTH     = 0.4f;  // How far under the surface a waiting fish swims
     constexpr float MIN_WATER_DEPTH = 0.6f; // Shallower than this is no place for a salmon
-    constexpr float LAND_DISTANCE  = 1.5f;  // Where a leaping fish lands, in front of the bear
-    constexpr float LEAP_TIME      = 0.8f;  // Seconds a leap takes, however far it goes
-    constexpr float MIN_LEAP_SPEED = 3.0f;  // Yards per second
-    constexpr float LEAP_HEIGHT    = 2.5f;
+    constexpr float CATCH_DISTANCE = 1.5f;  // Where a caught fish lies, in front of the bear
     constexpr float POOL_CATCH_RANGE = 20.0f + CONTACT_DISTANCE; // The core's search range for a bobber
-    constexpr float MAX_ANCHOR_DRIFT = 2.5f; // Moving further than this from where you roared ends it
+    constexpr float MAX_ANCHOR_DRIFT = 2.5f; // Moving further than this from where you started ends it
     constexpr Milliseconds OWNER_CHECK_INTERVAL = 500ms;
 
     struct Config
     {
         bool enabled = true;
-        uint32 startEmote = TEXT_EMOTE_ROAR;
-        bool requireRelic = true;
         bool sitWhileWaiting = true;
         uint32 biteDelayMin = 5000;
         uint32 biteDelayMax = 15000;
-        uint32 catchWindow = 1500;
+        uint32 catchWindow = 2000;
         uint32 spookDelay = 6000;
-        uint32 rageOnLeap = 25;
+        uint32 rageOnBite = 25;
         uint32 minCatchChance = 50;
         uint32 corpseSeconds = 60;
         float spotDistance = 4.5f;
         float poolReach = 12.0f;
 
-        uint32 leapSound = 3355;    // "Fishing Hooked", the bobber's bite
+        uint32 biteSound = 3355;    // "Fishing Hooked", the bobber's bite
         uint32 rippleSpell = 69657; // Water Splash (Self)
         uint32 splashSpell = 69665; // [DND] Water Visual
     };
@@ -132,11 +121,6 @@ namespace
                 return true;
 
         return false;
-    }
-
-    bool IsSalmon(Unit const* unit)
-    {
-        return unit && unit->GetEntry() == NPC_LEAPING_SALMON;
     }
 
     // Standing or swimming in water (not lava or slime).
@@ -226,8 +210,8 @@ namespace
         Position const& _spot;
     };
 
-    // The pool a salmon came out of, if any. It's judged by where it waited, not where it
-    // landed: it leapt out of the pool even if it's lying at the bear's feet now.
+    // The pool a salmon waits in, if any. It's judged by where it waited, not where it lies once
+    // caught.
     GameObject* GetPoolAt(Creature* fish, Position const& spot)
     {
         GameObject* pool = nullptr;
@@ -287,21 +271,20 @@ namespace
     {
         return player->IsAlive() && IsBear(player) && IsInWater(player) && !player->IsMounted()
             && player->GetExactDist2d(&anchor) <= MAX_ANCHOR_DRIFT
-            && (!config.requireRelic || HasSalmonRelic(player));
+            && HasSalmonRelic(player);
     }
 }
 
-// The salmon. It waits under the surface, leaps at the bear's feet, and either gets caught by a
-// Swipe or flops back. One fish per player at a time; it goes back to waiting after each leap, and
-// a fresh one takes over when it's caught.
+// The salmon: invisible, under the surface in front of the bear. Now and then it ripples, so the
+// druid can see where it is; when it bites, the water bursts and there's a moment to Swipe. One
+// fish per player at a time; it goes back to waiting after each bite, and a fresh one takes over
+// when it's caught.
 struct npc_swipe_fishing_salmon : public CreatureAI
 {
     enum class State
     {
-        Waiting,  // Under the surface, before the bite
-        Leaping,  // In the air: catchable
-        Landed,   // At the bear's feet: catchable
-        Escaping, // On its way back into the water
+        Waiting, // Before the bite
+        Biting,  // The splash: catchable
         Caught
     };
 
@@ -309,15 +292,13 @@ struct npc_swipe_fishing_salmon : public CreatureAI
     {
         EVENT_CHECK_OWNER = 1,
         EVENT_RIPPLE,
-        EVENT_LEAP,
-        EVENT_LANDED,
-        EVENT_ESCAPE,
-        EVENT_BACK_IN_WATER
+        EVENT_BITE,
+        EVENT_GET_AWAY
     };
 
     explicit npc_swipe_fishing_salmon(Creature* creature) : CreatureAI(creature) { }
 
-    // Called right after the summon. The fish keeps coming back as long as the owner stays put.
+    // Called right after the summon. The fish keeps biting as long as the owner stays put.
     void Start(Player* owner, Position const& anchor)
     {
         _owner = owner->GetGUID();
@@ -336,19 +317,21 @@ struct npc_swipe_fishing_salmon : public CreatureAI
         return ObjectAccessor::GetPlayer(*me, _owner);
     }
 
-    // Back under the surface until the next bite.
+    // Under the surface until the next bite.
     void Wait(uint32 extraDelay)
     {
         _state = State::Waiting;
-        _events.CancelEvent(EVENT_LEAP);
-        _events.ScheduleEvent(EVENT_LEAP, Milliseconds(extraDelay + urand(config.biteDelayMin, std::max(config.biteDelayMin, config.biteDelayMax))));
+        _events.CancelEvent(EVENT_GET_AWAY);
+        _events.CancelEvent(EVENT_BITE);
+        _events.ScheduleEvent(EVENT_BITE, Milliseconds(extraDelay + urand(config.biteDelayMin, std::max(config.biteDelayMin, config.biteDelayMax))));
 
         _events.CancelEvent(EVENT_RIPPLE);
         if (config.rippleSpell)
             _events.ScheduleEvent(EVENT_RIPPLE, 2s, 4s);
     }
 
-    void Leap()
+    // The bite: a splash and the bobber's sound. Swipe now.
+    void Bite()
     {
         Player* owner = GetOwner();
         if (!owner)
@@ -357,13 +340,13 @@ struct npc_swipe_fishing_salmon : public CreatureAI
             return;
         }
 
-        _state = State::Leaping;
+        _state = State::Biting;
         _events.CancelEvent(EVENT_RIPPLE);
 
-        // Out of combat a bear has no rage; the leap gives enough for one Swipe.
-        if (config.rageOnLeap && owner->getPowerType() == POWER_RAGE)
+        // Out of combat a bear has no rage; the bite gives enough for one Swipe.
+        if (config.rageOnBite && owner->getPowerType() == POWER_RAGE)
         {
-            int32 const wanted = int32(config.rageOnLeap * 10);
+            int32 const wanted = int32(config.rageOnBite * 10);
             int32 const current = int32(owner->GetPower(POWER_RAGE));
             if (current < wanted)
                 owner->ModifyPower(POWER_RAGE, wanted - current);
@@ -372,67 +355,13 @@ struct npc_swipe_fishing_salmon : public CreatureAI
         if (config.splashSpell)
             me->CastSpell(me, config.splashSpell, true);
 
-        if (config.leapSound)
-            me->PlayDirectSound(config.leapSound, owner);
+        if (config.biteSound)
+            me->PlayDirectSound(config.biteSound, owner);
 
-        Notify(owner, "A salmon leaps! Swipe!");
-
-        // Land at the bear's feet, on the water or ground there.
-        float const toFish = owner->GetAngle(me);
-        float x = owner->GetPositionX() + LAND_DISTANCE * std::cos(toFish);
-        float y = owner->GetPositionY() + LAND_DISTANCE * std::sin(toFish);
-        float z = owner->GetMapWaterOrGroundLevel(x, y, owner->GetPositionZ());
-        if (z <= INVALID_HEIGHT)
-            z = owner->GetPositionZ();
-
-        // A salmon from a pool further out leaps faster, so every leap takes about as long.
-        float const speedXY = std::max(MIN_LEAP_SPEED, me->GetExactDist2d(x, y) / LEAP_TIME);
-        float const speedZ = std::sqrt(2.0f * GRAVITY * LEAP_HEIGHT);
-        me->GetMotionMaster()->MoveJump(x, y, z, speedXY, speedZ, POINT_LANDED);
-
-        // In case the movement never reports back.
-        _events.ScheduleEvent(EVENT_LANDED, Milliseconds(uint32(me->GetExactDist2d(x, y) / speedXY * 1000.0f) + 300));
+        _events.ScheduleEvent(EVENT_GET_AWAY, Milliseconds(config.catchWindow));
     }
 
-    void Landed()
-    {
-        if (_state != State::Leaping)
-            return;
-
-        _state = State::Landed;
-        _events.CancelEvent(EVENT_LANDED);
-        _events.ScheduleEvent(EVENT_ESCAPE, Milliseconds(config.catchWindow));
-    }
-
-    // Too late, or it slipped free: back into the water.
-    void Escape(char const* message)
-    {
-        if (Player* owner = GetOwner())
-            Notify(owner, message);
-
-        _state = State::Escaping;
-        _events.CancelEvent(EVENT_ESCAPE);
-        _events.CancelEvent(EVENT_LANDED);
-
-        float const speedXY = std::max(MIN_LEAP_SPEED, me->GetExactDist2d(&_spot) / LEAP_TIME);
-        me->GetMotionMaster()->MoveJump(_spot, speedXY, std::sqrt(2.0f * GRAVITY * 1.5f), POINT_BACK_IN_WATER);
-        _events.ScheduleEvent(EVENT_BACK_IN_WATER, Milliseconds(uint32(LEAP_TIME * 1000.0f) + 700));
-    }
-
-    void BackInWater()
-    {
-        if (_state != State::Escaping)
-            return;
-
-        _events.CancelEvent(EVENT_BACK_IN_WATER);
-
-        if (GetOwner())
-            Wait(0);
-        else
-            End(GetOwner(), nullptr);
-    }
-
-    // Swiped by `caster`. Only the owner's Swipe counts.
+    // The owner used Swipe.
     void OnSwiped(Player* caster)
     {
         if (caster->GetGUID() != _owner)
@@ -444,8 +373,7 @@ struct npc_swipe_fishing_salmon : public CreatureAI
                 Notify(caster, "Too soon! The salmon darts away.");
                 Wait(config.spookDelay);
                 break;
-            case State::Leaping:
-            case State::Landed:
+            case State::Biting:
                 TryCatch(caster);
                 break;
             default:
@@ -455,7 +383,7 @@ struct npc_swipe_fishing_salmon : public CreatureAI
 
     void TryCatch(Player* player)
     {
-        // Like a bobber in a pool, a salmon from a pool is a sure catch.
+        // Like a bobber in a pool, a salmon in a pool is a sure catch.
         GameObject* pool = GetPoolAt(me, _spot);
 
         int32 skill, zoneSkill;
@@ -470,14 +398,24 @@ struct npc_swipe_fishing_salmon : public CreatureAI
 
         if (roll > chance)
         {
-            Escape("The salmon slips out of your claws!");
+            Notify(player, "The salmon slips out of your claws!");
+            Wait(0);
             return;
         }
 
         _state = State::Caught;
         _poolCatch = pool ? pool->GetGUID() : ObjectGuid::Empty;
         _events.Reset();
-        me->GetMotionMaster()->Clear();
+
+        // Pulled out at the bear's feet, where its loot can be reached.
+        float const toFish = player->GetAngle(me);
+        float const x = player->GetPositionX() + CATCH_DISTANCE * std::cos(toFish);
+        float const y = player->GetPositionY() + CATCH_DISTANCE * std::sin(toFish);
+        float z = player->GetMapWaterOrGroundLevel(x, y, player->GetPositionZ());
+        if (z <= INVALID_HEIGHT)
+            z = player->GetPositionZ();
+        me->NearTeleportTo(x, y, z, me->GetOrientation());
+
         me->SetLootRecipient(player);
         Unit::Kill(player, me);
     }
@@ -488,8 +426,8 @@ struct npc_swipe_fishing_salmon : public CreatureAI
         if (!owner)
             return;
 
-        // Caught from a pool: open the pool's loot, as the core does for a bobber. Closing it uses
-        // up one of the pool's catches. The salmon's body has nothing, so it goes soon.
+        // Caught in a pool: open the pool's loot, as the core does for a bobber. Closing it uses
+        // up one of the pool's catches.
         GameObject* pool = _poolCatch ? ObjectAccessor::GetGameObject(*me, _poolCatch) : nullptr;
         if (pool && pool->isSpawned())
         {
@@ -508,16 +446,18 @@ struct npc_swipe_fishing_salmon : public CreatureAI
                 // Open it as fishing loot, as a bobber does, so the catch counts as fishing.
                 owner->SendLoot(me->GetGUID(), LOOT_FISHING);
             }
+            else
+                me->DespawnOrUnsummon();
         }
 
-        // The corpse stays for looting; a fresh salmon takes its place in the water.
+        // A fresh salmon takes its place in the water.
         if (CanKeepFishing(owner, _anchor))
             SpawnSalmon(owner, _spot, _anchor);
         else
             End(owner, nullptr);
     }
 
-    // Stop fishing: forget this fish and send it away (unless it's a corpse to loot).
+    // Stop fishing: forget this fish and send it away (unless it holds a catch).
     void End(Player* owner, char const* message)
     {
         _events.Reset();
@@ -539,17 +479,6 @@ struct npc_swipe_fishing_salmon : public CreatureAI
             me->DespawnOrUnsummon();
     }
 
-    void MovementInform(uint32 type, uint32 id) override
-    {
-        if (type != EFFECT_MOTION_TYPE)
-            return;
-
-        if (id == POINT_LANDED)
-            Landed();
-        else if (id == POINT_BACK_IN_WATER)
-            BackInWater();
-    }
-
     // Only a caught fish dies, and only by Unit::Kill: no damage from anything.
     void DamageTaken(Unit* /*attacker*/, uint32& damage, DamageEffectType /*type*/, SpellSchoolMask /*school*/) override
     {
@@ -565,8 +494,8 @@ struct npc_swipe_fishing_salmon : public CreatureAI
         if (!me->IsAlive())
             return;
 
-        // A Swipe puts the druid in combat with the fish, and the fish never fights back or
-        // evades, so that combat would never end. End it; the druid's real fights are untouched.
+        // The fish never fights back or evades, so combat with it would never end. End it; the
+        // druid's real fights are untouched.
         if (me->IsInCombat())
             me->CombatStop(true);
 
@@ -599,17 +528,13 @@ struct npc_swipe_fishing_salmon : public CreatureAI
                         _events.ScheduleEvent(EVENT_RIPPLE, 3s, 6s);
                     }
                     break;
-                case EVENT_LEAP:
-                    Leap();
+                case EVENT_BITE:
+                    Bite();
                     break;
-                case EVENT_LANDED:
-                    Landed();
-                    break;
-                case EVENT_ESCAPE:
-                    Escape("The salmon flops back into the water.");
-                    break;
-                case EVENT_BACK_IN_WATER:
-                    BackInWater();
+                case EVENT_GET_AWAY:
+                    if (Player* owner = GetOwner())
+                        Notify(owner, "Too slow! The salmon got away.");
+                    Wait(0);
                     break;
                 default:
                     break;
@@ -633,7 +558,7 @@ namespace
 {
     Creature* SpawnSalmon(Player* player, Position const& spot, Position const& anchor)
     {
-        TempSummon* fish = player->SummonCreature(NPC_LEAPING_SALMON, spot, TEMPSUMMON_MANUAL_DESPAWN, 0, 0, nullptr, true);
+        TempSummon* fish = player->SummonCreature(NPC_SALMON, spot, TEMPSUMMON_MANUAL_DESPAWN, 0, 0, nullptr, true);
         if (!fish)
             return nullptr;
 
@@ -665,17 +590,16 @@ namespace
         return fish;
     }
 
-    // /roar: start a fishing session, or say why not. Druids who aren't dressed for it get no reply,
-    // so roaring stays just roaring for everyone else.
+    // Using the relic: start a fishing session, or say why not.
     void TryStartFishing(Player* player)
     {
-        if (player->getClass() != CLASS_DRUID || !IsBear(player))
-            return;
-
-        if (config.requireRelic && !HasSalmonRelic(player))
-            return;
-
         ChatHandler chat(player->GetSession());
+
+        if (!IsBear(player))
+        {
+            chat.SendNotification("Take Bear Form first.");
+            return;
+        }
 
         if (!player->HasSkill(SKILL_FISHING))
         {
@@ -701,7 +625,7 @@ namespace
         Position spot;
         bool found = FindPoolSpot(player, spot);
         for (float distance : { config.spotDistance, config.spotDistance - 1.0f, config.spotDistance - 2.0f })
-            if (!found && distance > LAND_DISTANCE && FindWaterSpot(player, distance, 0.0f, spot))
+            if (!found && distance > CATCH_DISTANCE && FindWaterSpot(player, distance, 0.0f, spot))
             {
                 found = true;
                 break;
@@ -723,26 +647,26 @@ namespace
     }
 }
 
-// Swipe (Bear), every rank: a Swipe that hits a salmon tries to catch it, and does no damage.
+// Swipe (Bear), every rank: a Swipe while your salmon bites catches it. The fish is under the
+// water and can't be targeted, so the cast counts, not a hit.
 class spell_swipe_fishing_swipe : public SpellScript
 {
     PrepareSpellScript(spell_swipe_fishing_swipe);
 
-    void HandleHit(SpellEffIndex /*effIndex*/)
+    void HandleCast()
     {
         Player* player = GetCaster() ? GetCaster()->ToPlayer() : nullptr;
-        Unit* target = GetHitUnit();
-        if (!player || !IsSalmon(target))
+        if (!player || !config.enabled)
             return;
 
-        PreventHitDamage();
-        if (auto* ai = dynamic_cast<npc_swipe_fishing_salmon*>(target->ToCreature()->AI()))
-            ai->OnSwiped(player);
+        if (Creature* fish = GetCurrentSalmon(player))
+            if (auto* ai = dynamic_cast<npc_swipe_fishing_salmon*>(fish->AI()))
+                ai->OnSwiped(player);
     }
 
     void Register() override
     {
-        OnEffectHitTarget += SpellEffectFn(spell_swipe_fishing_swipe::HandleHit, EFFECT_ALL, SPELL_EFFECT_SCHOOL_DAMAGE);
+        OnCast += SpellCastFn(spell_swipe_fishing_swipe::HandleCast);
     }
 };
 
@@ -754,52 +678,43 @@ public:
     void OnBeforeConfigLoad(bool /*reload*/) override
     {
         config.enabled         = sConfigMgr->GetOption<bool>("SwipeFishing.Enable", true);
-        config.startEmote      = sConfigMgr->GetOption<uint32>("SwipeFishing.StartEmote", TEXT_EMOTE_ROAR);
-        config.requireRelic    = sConfigMgr->GetOption<bool>("SwipeFishing.RequireRelic", true);
         config.sitWhileWaiting = sConfigMgr->GetOption<bool>("SwipeFishing.SitWhileWaiting", true);
         config.biteDelayMin    = sConfigMgr->GetOption<uint32>("SwipeFishing.BiteDelayMin", 5000);
         config.biteDelayMax    = sConfigMgr->GetOption<uint32>("SwipeFishing.BiteDelayMax", 15000);
-        config.catchWindow     = sConfigMgr->GetOption<uint32>("SwipeFishing.CatchWindow", 1500);
+        config.catchWindow     = sConfigMgr->GetOption<uint32>("SwipeFishing.CatchWindow", 2000);
         config.spookDelay      = sConfigMgr->GetOption<uint32>("SwipeFishing.SpookDelay", 6000);
-        config.rageOnLeap      = sConfigMgr->GetOption<uint32>("SwipeFishing.RageOnLeap", 25);
+        config.rageOnBite      = sConfigMgr->GetOption<uint32>("SwipeFishing.RageOnBite", 25);
         config.minCatchChance  = std::min<uint32>(100, sConfigMgr->GetOption<uint32>("SwipeFishing.MinCatchChance", 50));
         config.corpseSeconds   = sConfigMgr->GetOption<uint32>("SwipeFishing.CorpseSeconds", 60);
         config.spotDistance    = std::clamp(sConfigMgr->GetOption<float>("SwipeFishing.SpotDistance", 4.5f), 2.0f, 8.0f);
         config.poolReach       = std::clamp(sConfigMgr->GetOption<float>("SwipeFishing.PoolReach", 12.0f), 0.0f, 30.0f);
 
-        config.leapSound       = sConfigMgr->GetOption<uint32>("SwipeFishing.LeapSound", 3355);
+        config.biteSound       = sConfigMgr->GetOption<uint32>("SwipeFishing.BiteSound", 3355);
         config.rippleSpell     = sConfigMgr->GetOption<uint32>("SwipeFishing.RippleSpell", 69657);
         config.splashSpell     = sConfigMgr->GetOption<uint32>("SwipeFishing.SplashSpell", 69665);
     }
 };
 
-class SwipeFishingPlayerScript : public PlayerScript
+// The salmon relics, every rank. Using one in Bear Form, in water, starts fishing. The item's use
+// spell (Find Fish, so the "Use:" line in the tooltip is true) is cast as well.
+class item_swipe_fishing_relic : public ItemScript
 {
 public:
-    SwipeFishingPlayerScript() : PlayerScript("SwipeFishingPlayerScript", { PLAYERHOOK_ON_TEXT_EMOTE, PLAYERHOOK_ON_BEFORE_SEND_LOOT }) { }
+    item_swipe_fishing_relic() : ItemScript("item_swipe_fishing_relic") { }
 
-    void OnPlayerTextEmote(Player* player, uint32 textEmote, uint32 /*emoteNum*/, ObjectGuid /*guid*/) override
+    bool OnUse(Player* player, Item* /*item*/, SpellCastTargets const& /*targets*/) override
     {
-        if (config.enabled && textEmote == config.startEmote)
+        if (config.enabled)
             TryStartFishing(player);
-    }
 
-    // Achievements and statistics count fish by the loot's type, and opening a body by hand makes
-    // it corpse loot. A salmon's body holds a catch, so keep it fishing loot however it's opened.
-    void OnPlayerBeforeSendLoot(Player* player, ObjectGuid lootGuid, Loot* loot) override
-    {
-        if (!lootGuid.IsCreature() || loot->loot_type != LOOT_CORPSE)
-            return;
-
-        if (IsSalmon(ObjectAccessor::GetCreature(*player, lootGuid)))
-            loot->loot_type = LOOT_FISHING;
+        return false;
     }
 };
 
 void AddSwipeFishingScripts()
 {
     new SwipeFishingWorldScript();
-    new SwipeFishingPlayerScript();
+    new item_swipe_fishing_relic();
     RegisterSpellScript(spell_swipe_fishing_swipe);
     RegisterCreatureAI(npc_swipe_fishing_salmon);
 }

@@ -3,10 +3,10 @@
 ########################################
 # mod-swipe-fishing
 #
-# Druids fish like bears. In Bear Form, standing in water with a salmon relic on, /roar and wait.
-# A salmon leaps out and lands at your feet: Swipe it before it flops back. Catches give the
-# zone's normal fishing loot and use the normal fishing skill rules. The relic comes from a druid
-# in Moonglade, and he upgrades it at each fishing rank.
+# Druids fish like bears. In Bear Form, standing in water, use your salmon relic and wait. When
+# the water splashes, Swipe before the fish gets away. Catches give the zone's normal fishing loot
+# and use the normal fishing skill rules. The relic comes from a druid in Moonglade, and he
+# upgrades it at each fishing rank.
 ########################################
 
 #
@@ -16,23 +16,6 @@
 #
 
 SwipeFishing.Enable = 1
-
-#
-#    SwipeFishing.StartEmote
-#        Description: The text emote that starts fishing, as a TextEmotes.dbc id. 75 is /roar.
-#        Default:     75
-#
-
-SwipeFishing.StartEmote = 75
-
-#
-#    SwipeFishing.RequireRelic
-#        Description: 1: only druids wearing a salmon relic (any rank) can fish. 0: any druid in
-#                     Bear Form.
-#        Default:     1
-#
-
-SwipeFishing.RequireRelic = 1
 
 #
 #    SwipeFishing.SitWhileWaiting
@@ -45,8 +28,8 @@ SwipeFishing.SitWhileWaiting = 1
 #
 #    SwipeFishing.BiteDelayMin
 #    SwipeFishing.BiteDelayMax
-#        Description: How long until a salmon leaps, picked at random between the two, in
-#                     milliseconds.
+#        Description: How long until a salmon bites (the splash), picked at random between the
+#                     two, in milliseconds.
 #        Default:     5000, 15000
 #
 
@@ -55,13 +38,11 @@ SwipeFishing.BiteDelayMax = 15000
 
 #
 #    SwipeFishing.CatchWindow
-#        Description: How long a salmon lies at your feet after landing before it flops back, in
-#                     milliseconds. You can also hit it in the air, about half a second before
-#                     it lands.
-#        Default:     1500
+#        Description: How long after the splash you have to Swipe, in milliseconds.
+#        Default:     2000
 #
 
-SwipeFishing.CatchWindow = 1500
+SwipeFishing.CatchWindow = 2000
 
 #
 #    SwipeFishing.SpookDelay
@@ -72,13 +53,13 @@ SwipeFishing.CatchWindow = 1500
 SwipeFishing.SpookDelay = 6000
 
 #
-#    SwipeFishing.RageOnLeap
-#        Description: A bear out of combat has no rage, so a leaping salmon tops you up to this
-#                     much rage (not added on top) so you can Swipe. 0 turns it off.
+#    SwipeFishing.RageOnBite
+#        Description: A bear out of combat has no rage, so a bite tops you up to this much rage
+#                     (not added on top) so you can Swipe. 0 turns it off.
 #        Default:     25
 #
 
-SwipeFishing.RageOnLeap = 25
+SwipeFishing.RageOnBite = 25
 
 #
 #    SwipeFishing.MinCatchChance
@@ -112,7 +93,7 @@ SwipeFishing.SpotDistance = 4.5
 #
 #    SwipeFishing.PoolReach
 #        Description: A fishing pool (a school of fish) whose middle is within this many yards of
-#                     you when you roar is where the salmon waits, instead of the spot in front of
+#                     you when you start is where the salmon waits, instead of the spot in front of
 #                     you. A salmon from a pool is a sure catch and gives the pool's loot, using up
 #                     one of the pool's catches, as a bobber would. 0 to ignore pools when choosing
 #                     the spot (a salmon that happens to be in a pool still counts). Up to 30.
@@ -124,26 +105,27 @@ SwipeFishing.PoolReach = 12
 ########################################
 # Effects
 #
-# Existing client sounds and spells for the leap and the waiting fish. 0 for none.
+# Existing client sounds and spells for the bite and the waiting fish. 0 for none.
 ########################################
 
 #
-#    SwipeFishing.LeapSound
-#        Description: Sound played to you when a salmon leaps, a SoundEntries.dbc id. 3355 is the
+#    SwipeFishing.BiteSound
+#        Description: Sound played to you when a salmon bites, a SoundEntries.dbc id. 3355 is the
 #                     fishing bobber's bite.
 #        Default:     3355
 #
 #    SwipeFishing.SplashSpell
-#        Description: Visual-only spell the salmon casts on itself when it leaps. 69665 is a water
-#                     burst.
+#        Description: Visual-only spell the salmon casts on itself when it bites: the cue to
+#                     Swipe. 69665 is a water burst.
 #        Default:     69665
 #
 #    SwipeFishing.RippleSpell
 #        Description: Visual-only spell the salmon casts on itself every few seconds while it
-#                     waits, so you can see where it is. 69657 is a small splash.
+#                     waits, so you can see where it is. 69657 is a small splash. 0 if it's
+#                     too easy to mistake for the bite.
 #        Default:     69657
 #
 
-SwipeFishing.LeapSound = 3355
+SwipeFishing.BiteSound = 3355
 SwipeFishing.SplashSpell = 69665
 SwipeFishing.RippleSpell = 69657

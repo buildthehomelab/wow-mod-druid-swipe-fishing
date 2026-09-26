@@ -3,16 +3,21 @@
 An [AzerothCore](https://www.azerothcore.org/) (WotLK 3.3.5a) module: druids fish like bears. No
 pole, no bobber, just claws. No client patch needed.
 
-Put on a salmon relic, take Bear Form, wade into water and `/roar`. The bear sits and watches
-the water. After a while a salmon leaps out and lands at your feet, and you have a moment to
-**Swipe** it:
+Put on a salmon relic, take Bear Form, wade into water facing deeper water, and **use the relic**
+(right-click it on the character sheet, or `/use 18` in a macro). The bear sits and watches the
+water. A salmon waits unseen under the surface in front of you, rippling now and then so you can
+see where. When it bites, the water bursts with the fishing bobber's bite sound, and you have 2
+seconds to **Swipe**:
 
-- **Hit it** and you catch it. The loot window opens with whatever normal fishing would give in
-  that spot. If you close it, loot the salmon's body for the rest.
+- **In time** and you catch it. The loot window opens with whatever normal fishing would give in
+  that spot. Like a bobber's, closing it leaves the rest behind.
 - **Swipe too early** and you scare it off for a few seconds.
-- **Too late** and it flops back into the water.
+- **Too late** and it gets away; wait for the next bite.
 
-The fishing goes on, one salmon after another, until you move, leave the water or leave Bear Form.
+The fishing goes on, one bite after another, until you move, leave the water or leave Bear Form.
+
+If your client's Auto Loot option is on, it takes everything as soon as the window opens; turn it
+off (or hold Shift) to pick. The server can't change that.
 
 ## Catches follow the fishing rules
 
@@ -30,17 +35,17 @@ The fishing goes on, one salmon after another, until you move, leave the water o
 
 Pools (schools of fish) work as they do for a bobber:
 
-- Roar with a pool within 12 yards and the salmon waits in the middle of the pool instead of in
-  front of you. A salmon from further out leaps faster, so every leap takes about the same time.
-- A salmon that leapt out of a pool is a **sure catch**, and instead of a body to loot it opens
-  the **pool's own loot**, like a bobber in a pool.
+- Start with a pool within 12 yards and the salmon waits in the middle of the pool instead of in
+  front of you.
+- A salmon in a pool is a **sure catch**, and it opens the **pool's own loot**, like a bobber in a
+  pool.
 - Each catch uses up one of the pool's catches. When it's empty the pool despawns and moves on as
   usual, and the next salmon gives the zone's ordinary fishing loot.
 
 ## The relic
 
-One druid idol that grows with your fishing. There's one per fishing rank, and wearing any of them
-is what lets you fish in Bear Form. They have Stamina and fishing skill, and nothing else.
+One druid idol that grows with your fishing. There's one per fishing rank, and using any of them
+is how you fish in Bear Form. They have Stamina and fishing skill, and nothing else.
 
 | Relic | Rank | Level | Stats |
 |---|---|---|---|
@@ -72,8 +77,9 @@ already past several ranks can do the quests back to back.
 ## Without a client patch
 
 - **Swipe, not Fishing.** The 3.3.5 client refuses to cast Fishing in Bear Form or without a
-  pole, so the druid never casts it: the salmon is a creature, and Swipe catches it.
-- **Rage.** A bear out of combat has no rage, and Swipe costs 20. When a salmon leaps you're
+  pole, so the druid never casts it: the salmon is an invisible creature, and a Swipe while it
+  bites catches it. The Swipe doesn't have to hit anything.
+- **Rage.** A bear out of combat has no rage, and Swipe costs 20. When a salmon bites you're
   topped up to 25 rage, enough for one Swipe.
 - **Items.** The client takes item icons from its own files, by item number, and a custom
   number would show a question mark. So the relics reuse idol numbers players can't get in 3.3.5:
@@ -83,9 +89,12 @@ already past several ranks can do the quests back to back.
 
   The module's SQL rewrites their database rows. The uninstall SQL puts the originals back.
 - **Tooltips.** The "Equip: Fishing skill increased by N" lines are the item spells real fishing
-  gear uses.
-- **Effects.** When a salmon leaps you hear the fishing bobber's bite sound and see a water burst.
-  While a salmon waits it splashes now and then, so you can see where it is.
+  gear uses. An item can only be used if it has a use spell, whose text is the "Use:" line, so
+  the relics have Find Fish: "Use: Nearby fishing nodes appear on the minimap." Using a relic
+  turns that tracking on too, which helps you find pools.
+- **Effects.** When a salmon bites you hear the fishing bobber's bite sound and see a water burst.
+  While it waits it makes a small splash now and then, so you can see where it is. If that's too
+  easy to mistake for the bite, set `SwipeFishing.RippleSpell = 0`.
 
 ## Install
 
@@ -111,6 +120,11 @@ folder name. Re-run CMake, rebuild, and copy `conf/mod_swipe_fishing.conf.dist` 
 - **From the pole-less idol version** that briefly replaced the minigame: if your server ran its
   SQL (`_01` and `_02`), `_03` and then `_04` bring the minigame back with the relics.
 
+- **From the `/roar` version:** `_05` makes the salmon invisible and gives the relics their use.
+  In your `mod_swipe_fishing.conf`, `StartEmote` and `RequireRelic` are gone, and `RageOnLeap` and
+  `LeapSound` are now `RageOnBite` and `BiteSound`. Old names are ignored and the defaults apply.
+  `CatchWindow` now counts from the splash; its default went from 1500 to 2000.
+
 Rebuild the worldserver either way: the C++ changed.
 
 ## Settings
@@ -120,18 +134,16 @@ Everything is in `mod_swipe_fishing.conf.dist`, with defaults:
 | Setting | Default | What it does |
 |---|---|---|
 | `SwipeFishing.Enable` | 1 | Master switch for the minigame |
-| `SwipeFishing.StartEmote` | 75 | Text emote that starts fishing (75 = `/roar`) |
-| `SwipeFishing.RequireRelic` | 1 | 0 lets any druid in Bear Form fish, relic or not |
 | `SwipeFishing.SitWhileWaiting` | 1 | The bear sits while it waits |
-| `SwipeFishing.BiteDelayMin` / `Max` | 5000 / 15000 | Time until a salmon leaps, in ms |
-| `SwipeFishing.CatchWindow` | 1500 | How long a salmon lies at your feet, in ms |
+| `SwipeFishing.BiteDelayMin` / `Max` | 5000 / 15000 | Time until a salmon bites, in ms |
+| `SwipeFishing.CatchWindow` | 2000 | How long after the splash you can Swipe, in ms |
 | `SwipeFishing.SpookDelay` | 6000 | Extra wait after Swiping too early, in ms |
-| `SwipeFishing.RageOnLeap` | 25 | Rage a leap tops you up to |
+| `SwipeFishing.RageOnBite` | 25 | Rage a bite tops you up to |
 | `SwipeFishing.MinCatchChance` | 50 | Lowest catch chance, in %; 0 for pure fishing rules |
 | `SwipeFishing.CorpseSeconds` | 60 | How long a caught salmon stays for looting |
 | `SwipeFishing.SpotDistance` | 4.5 | How far in front of you the salmon waits, in yards |
-| `SwipeFishing.PoolReach` | 12 | A pool this close when you roar is where the salmon waits |
-| `SwipeFishing.LeapSound` / `SplashSpell` / `RippleSpell` | 3355 / 69665 / 69657 | Sound and visuals, 0 for none |
+| `SwipeFishing.PoolReach` | 12 | A pool this close when you start is where the salmon waits |
+| `SwipeFishing.BiteSound` / `SplashSpell` / `RippleSpell` | 3355 / 69665 / 69657 | Sound and visuals, 0 for none |
 
 ## Turning it off
 
@@ -152,9 +164,9 @@ yet. Things to check in game:
 - Tavar's spot comes from terrain data, not from standing there. If he's inside a rock or in the
   lake, move him with `.npc move`.
 - Does the bear sit in shallow water, and does Swiping stand it up?
-- Do the leap arc, the landing spot and the 1.5 second window feel right?
-- Is the red "frenzy" fish model (the Northrend Rainbow Trout's) salmon-like enough?
-- Does the water burst visual (69665) show in the 3.3.5 client?
+- Is the 2 second window after the splash right?
+- Does the water burst (69665) show on the invisible fish, and does it stand out from the ripples?
+- Can you use the relic in Bear Form, and cast Swipe with nothing in front of you?
 - Do the reused relic numbers show the right icon and equip in the relic slot in your client?
 
 ## License
