@@ -57,13 +57,25 @@ VALUES
 -- with .gps and move him with .npc move if he's in a rock or in the lake.
 -- ---------------------------------------------------------------------------------------------
 
+-- The spawn row is a copy of Moren Riverbend's (guid 42335, a tauren druid in Nighthaven) with the
+-- entry and position changed, so it fits whatever columns this server's `creature` table has.
+-- Servers from before AzerothCore's multi-entry spawns call the entry column `id`, later ones `id1`;
+-- this is written for `id`. On a newer server, change `id` to `id1` below.
 DELETE FROM `creature` WHERE `guid` = 9500400;
-INSERT INTO `creature`
-    (`guid`, `id1`, `map`, `zoneId`, `areaId`, `spawnMask`, `phaseMask`, `position_x`, `position_y`,
-     `position_z`, `orientation`, `spawntimesecs`, `wander_distance`, `MovementType`, `Comment`)
-VALUES
-    (9500400, 9500402, 1, 493, 656, 1, 1, 7847.9, -2652.1, 454.0, 5.51, 300, 0, 0,
-     'mod-swipe-fishing: Tavar Riverclaw');
+DROP TEMPORARY TABLE IF EXISTS `tmp_swipe_fishing_spawn`;
+CREATE TEMPORARY TABLE `tmp_swipe_fishing_spawn` SELECT * FROM `creature` WHERE `guid` = 42335;
+UPDATE `tmp_swipe_fishing_spawn` SET
+    `id`              = 9500402,
+    `guid`            = 9500400,
+    `position_x`      = 7847.9,
+    `position_y`      = -2652.1,
+    `position_z`      = 454.0,
+    `orientation`     = 5.51,
+    `equipment_id`    = 0,
+    `MovementType`    = 0,
+    `wander_distance` = 0;
+INSERT INTO `creature` SELECT * FROM `tmp_swipe_fishing_spawn`;
+DROP TEMPORARY TABLE `tmp_swipe_fishing_spawn`;
 
 DELETE FROM `npc_text` WHERE `ID` = 9500402;
 INSERT INTO `npc_text` (`ID`, `text0_0`, `text0_1`, `BroadcastTextID0`, `lang0`, `Probability0`)
