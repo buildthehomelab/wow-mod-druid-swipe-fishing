@@ -3,15 +3,15 @@
 ########################################
 # mod-swipe-fishing
 #
-# Druids fish like bears. In Bear Form, standing in water with the Grizzly Helm on, /roar and wait.
-# A salmon leaps out and lands at your feet: Swipe it before it flops back. Catches give the
-# zone's normal fishing loot and use the normal fishing skill rules. The gear comes from a druid
-# quest chain in Moonglade.
+# Druids fish without a fishing pole. With the Idol of Voracity equipped, /roar casts Fishing in
+# any form, Bear Form included, and Fishing needs no pole. It's normal fishing: bobber, pools,
+# skill and loot. The idol comes from a druid quest in Moonglade.
 ########################################
 
 #
 #    SwipeFishing.Enable
-#        Description: Master switch for the minigame and the gear's effects.
+#        Description: Master switch. With 0 the idol does nothing and Fishing needs a pole again,
+#                     as in stock AzerothCore.
 #        Default:     1
 #
 
@@ -19,189 +19,9 @@ SwipeFishing.Enable = 1
 
 #
 #    SwipeFishing.StartEmote
-#        Description: The text emote that starts fishing, as a TextEmotes.dbc id. 75 is /roar.
+#        Description: The text emote that casts Fishing for a druid wearing the idol, as a
+#                     TextEmotes.dbc id. 75 is /roar.
 #        Default:     75
 #
 
 SwipeFishing.StartEmote = 75
-
-#
-#    SwipeFishing.RequireHelm
-#        Description: 1: only druids wearing the Grizzly Helm can fish. 0: any druid in Bear Form.
-#        Default:     1
-#
-
-SwipeFishing.RequireHelm = 1
-
-#
-#    SwipeFishing.SitWhileWaiting
-#        Description: The bear sits down while it waits for a bite. Swiping stands it up.
-#        Default:     1
-#
-
-SwipeFishing.SitWhileWaiting = 1
-
-#
-#    SwipeFishing.BiteDelayMin
-#    SwipeFishing.BiteDelayMax
-#        Description: How long until a salmon leaps, picked at random between the two, in
-#                     milliseconds.
-#        Default:     5000, 15000
-#
-
-SwipeFishing.BiteDelayMin = 5000
-SwipeFishing.BiteDelayMax = 15000
-
-#
-#    SwipeFishing.CatchWindow
-#        Description: How long a salmon lies at your feet after landing before it flops back, in
-#                     milliseconds. You can also hit it in the air, about half a second before
-#                     it lands.
-#        Default:     1500
-#
-
-SwipeFishing.CatchWindow = 1500
-
-#
-#    SwipeFishing.SpookDelay
-#        Description: Extra wait, in milliseconds, after you Swipe too early and scare the fish.
-#        Default:     6000
-#
-
-SwipeFishing.SpookDelay = 6000
-
-#
-#    SwipeFishing.RageOnLeap
-#        Description: A bear out of combat has no rage, so a leaping salmon tops you up to this
-#                     much rage (not added on top) so you can Swipe. 0 turns it off.
-#        Default:     25
-#
-
-SwipeFishing.RageOnLeap = 25
-
-#
-#    SwipeFishing.MinCatchChance
-#        Description: The catch chance follows normal fishing: your fishing skill against the
-#                     zone's fishing level, certain at zone level + 95. This is the lowest it can
-#                     be, in percent, so a well-timed Swipe isn't wasted too often. Moonglade's
-#                     fishing level is 205: a druid with 100 skill would have 11% by the rules.
-#                     0 for pure fishing rules.
-#        Default:     50
-#
-
-SwipeFishing.MinCatchChance = 50
-
-#
-#    SwipeFishing.CorpseSeconds
-#        Description: How long a caught salmon stays for you to loot, in seconds.
-#        Default:     60
-#
-
-SwipeFishing.CorpseSeconds = 60
-
-#
-#    SwipeFishing.SpotDistance
-#        Description: How far in front of you the salmon waits, in yards (2 to 8). If the water
-#                     is too shallow there, it tries 1 and 2 yards closer.
-#        Default:     4.5
-#
-
-SwipeFishing.SpotDistance = 4.5
-
-#
-#    SwipeFishing.PoolReach
-#        Description: A fishing pool (a school of fish) whose middle is within this many yards of
-#                     you when you roar is where the salmon waits, instead of the spot in front of
-#                     you. A salmon from a pool is a sure catch and gives the pool's loot, using up
-#                     one of the pool's catches, as a bobber would. 0 to ignore pools when choosing
-#                     the spot (a salmon that happens to be in a pool still counts). Up to 30.
-#        Default:     12
-#
-
-SwipeFishing.PoolReach = 12
-
-#
-#    SwipeFishing.BigFishChance
-#        Description: While "Twenty-Six Pounds" is in your quest log, the chance in percent that
-#                     the next fish is the Twenty-Six Pound Salmon the quest asks for.
-#        Default:     20
-#
-
-SwipeFishing.BigFishChance = 20
-
-########################################
-# The gear
-########################################
-
-#
-#    SwipeFishing.Salmon.SkillPerDamage
-#        Description: 26 Pound Salmon: Swipe deals 1 extra damage per this many points of fishing
-#                     skill, to each target. At 150 skill and 5 that's +30. 0 turns it off.
-#        Default:     5
-#
-
-SwipeFishing.Salmon.SkillPerDamage = 5
-
-#
-#    SwipeFishing.Helm.SkillBonus
-#    SwipeFishing.Helm.Duration
-#        Description: Grizzly Helm: shifting into Bear Form gives this much fishing skill for this
-#                     many milliseconds. SkillBonus 0 turns it off. The buff shows as "Captain
-#                     Rumsey's Lager", whose tooltip always says +10.
-#        Default:     25, 60000
-#
-
-SwipeFishing.Helm.SkillBonus = 25
-SwipeFishing.Helm.Duration = 60000
-
-#
-#    SwipeFishing.Pants.Stamina
-#    SwipeFishing.Pants.MaxStacks
-#    SwipeFishing.Pants.Duration
-#        Description: Fish Heart Pants: every catch gives this much stamina, stacking up to
-#                     MaxStacks times, for Duration milliseconds (refreshed by each catch).
-#                     Stamina 0 turns it off. The buff shows as "Invigorated", whose tooltip
-#                     always says 24 per stack. MaxStacks can't go above 10.
-#        Default:     5, 5, 60000
-#
-
-SwipeFishing.Pants.Stamina = 5
-SwipeFishing.Pants.MaxStacks = 5
-SwipeFishing.Pants.Duration = 60000
-
-#
-#    SwipeFishing.Idol.Chance
-#        Description: Idol of Voracity: the chance in percent, per Swipe that hits an enemy while
-#                     you stand in water, that a salmon leaps out at you. Needs Fishing. 0 turns it
-#                     off.
-#        Default:     15
-#
-
-SwipeFishing.Idol.Chance = 15
-
-########################################
-# Effects
-#
-# Existing client sounds and spells for the leap and the waiting fish. 0 for none.
-########################################
-
-#
-#    SwipeFishing.LeapSound
-#        Description: Sound played to you when a salmon leaps, a SoundEntries.dbc id. 3355 is the
-#                     fishing bobber's bite.
-#        Default:     3355
-#
-#    SwipeFishing.SplashSpell
-#        Description: Visual-only spell the salmon casts on itself when it leaps. 69665 is a water
-#                     burst.
-#        Default:     69665
-#
-#    SwipeFishing.RippleSpell
-#        Description: Visual-only spell the salmon casts on itself every few seconds while it
-#                     waits, so you can see where it is. 69657 is a small splash.
-#        Default:     69657
-#
-
-SwipeFishing.LeapSound = 3355
-SwipeFishing.SplashSpell = 69665
-SwipeFishing.RippleSpell = 69657
