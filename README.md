@@ -10,7 +10,8 @@ to **target it and Swipe** (Swipe needs a target; target the fish while you wait
 
 - **In time** and you catch it. The loot window opens with whatever normal fishing would give in
   that spot. If you close it, loot the salmon's body for the rest.
-- **Swipe too early** and you scare it off for a few seconds.
+- **Swipe too early** and you scare it off for a few seconds. A Swipe in the first couple of
+  seconds after a bite ends (a second press right after your catch) doesn't count.
 - **Too late** and it gets away; wait for the next bite.
 
 The fishing goes on, one bite after another, until you move, leave the water or leave Bear Form,
@@ -188,6 +189,7 @@ Everything is in `mod_swipe_fishing.conf.dist`, with defaults:
 | `SwipeFishing.BiteDelayMin` / `Max` | 5000 / 15000 | Time until a salmon bites, in ms |
 | `SwipeFishing.CatchWindow` | 2000 | How long after the splash you can Swipe, in ms |
 | `SwipeFishing.SpookDelay` | 6000 | Extra wait after Swiping too early, in ms |
+| `SwipeFishing.SettleTime` | 2000 | After a bite ends or a new salmon appears, Swipes this soon are ignored rather than "too soon", in ms |
 | `SwipeFishing.RageOnBite` | 25 | Rage a bite tops you up to |
 | `SwipeFishing.MinCatchChance` | 50 | Lowest catch chance, in %; 0 for pure fishing rules |
 | `SwipeFishing.CorpseSeconds` | 60 | How long a caught salmon stays for looting |

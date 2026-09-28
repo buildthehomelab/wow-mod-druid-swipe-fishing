@@ -33,6 +33,7 @@
 #include "CellImpl.h"
 #include "CreatureAI.h"
 #include "GameObject.h"
+#include "GameTime.h"
 #include "GridNotifiers.h"
 #include "GridNotifiersImpl.h"
 #include "LootMgr.h"
@@ -88,6 +89,7 @@ namespace
         uint32 biteDelayMax = 15000;
         uint32 catchWindow = 2000;
         uint32 spookDelay = 6000;
+        uint32 settleTime = 2000;
         uint32 rageOnBite = 25;
         uint32 minCatchChance = 50;
         uint32 corpseSeconds = 60;
@@ -331,6 +333,10 @@ struct npc_swipe_fishing_salmon : public CreatureAI
         if (_state == State::Biting)
             me->NearTeleportTo(_spot.GetPositionX(), _spot.GetPositionY(), _spot.GetPositionZ(), _spot.GetOrientation());
 
+        // A second Swipe right after the one that ended the bite (Swipe can be free, and the core
+        // queues a press made near the end of the global cooldown) isn't a new, early Swipe.
+        _settledAt = GameTime::GetGameTimeMS() + Milliseconds(config.settleTime);
+
         _state = State::Waiting;
         _events.CancelEvent(EVENT_GET_AWAY);
         _events.CancelEvent(EVENT_BITE);
@@ -385,6 +391,8 @@ struct npc_swipe_fishing_salmon : public CreatureAI
         switch (_state)
         {
             case State::Waiting:
+                if (GameTime::GetGameTimeMS() < _settledAt)
+                    break;
                 Notify(caster, "Too soon! The salmon darts away.");
                 Wait(config.spookDelay);
                 break;
@@ -550,6 +558,7 @@ private:
     Position _anchor;
     Position _spot;
     State _state = State::Waiting;
+    Milliseconds _settledAt = 0ms; // Swipes before this are ignored, not "too soon"
 };
 
 namespace
@@ -702,6 +711,7 @@ public:
         config.biteDelayMax    = sConfigMgr->GetOption<uint32>("SwipeFishing.BiteDelayMax", 15000);
         config.catchWindow     = sConfigMgr->GetOption<uint32>("SwipeFishing.CatchWindow", 2000);
         config.spookDelay      = sConfigMgr->GetOption<uint32>("SwipeFishing.SpookDelay", 6000);
+        config.settleTime      = std::min(sConfigMgr->GetOption<uint32>("SwipeFishing.SettleTime", 2000), config.biteDelayMin);
         config.rageOnBite      = sConfigMgr->GetOption<uint32>("SwipeFishing.RageOnBite", 25);
         config.minCatchChance  = std::min<uint32>(100, sConfigMgr->GetOption<uint32>("SwipeFishing.MinCatchChance", 50));
         config.corpseSeconds   = sConfigMgr->GetOption<uint32>("SwipeFishing.CorpseSeconds", 60);
