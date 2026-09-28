@@ -2,7 +2,7 @@
  * mod-swipe-fishing
  *
  * Druids fish like bears: no pole, just claws. A druid in Bear Form, standing in water with a
- * salmon relic on, roars (/roar) and waits. A salmon waits under the surface in front of them;
+ * salmon relic on, uses the relic (Salmon Run) and waits. A salmon waits under the surface in front of them;
  * when it bites, it surfaces at the bear's feet with a splash and the
  * bobber's sound, and the druid has a moment to Swipe it. In time, the catch's loot opens with
  * whatever normal fishing would give in that spot, counted as fishing for achievements and
@@ -12,12 +12,13 @@
  * Catches follow the core's fishing rules: the zone's fishing loot, a catch chance from fishing
  * skill against the zone's fishing level, and a skill-up check on every attempt.
  *
- * Fishing pools work as they do for a bobber. Roar with a pool in reach and the salmon waits
+ * Fishing pools work as they do for a bobber. Start with a pool in reach and the salmon waits
  * inside it. A salmon caught inside a pool's radius is a sure catch and opens the pool's own loot,
  * which uses up one of the pool's catches, so it runs out and despawns as usual.
  *
- * Nothing here needs a client patch: the druid casts Swipe, which bears always can, not Fishing,
- * which the client refuses in Bear Form or without a pole.
+ * The druid catches with Swipe, which bears always can, not Fishing, which the client refuses in
+ * Bear Form or without a pole. Salmon Run is the relics' Use effect: a spell of its own (90060),
+ * so the client needs the realm patch that adds it to Spell.dbc (client/build_patch.py).
  *
  * The relics: one idol per fishing rank, Journeyman to Grand Master, each with Stamina and fishing
  * skill. Wearing any of them lets a druid fish. Tavar Riverclaw gives the first, and
@@ -40,6 +41,8 @@
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "ScriptMgr.h"
+#include "Spell.h"
+#include "SpellInfo.h"
 #include "SpellScript.h"
 #include "SpellScriptLoader.h"
 #include "TemporarySummon.h"
@@ -72,13 +75,14 @@ namespace
     constexpr float MIN_WATER_DEPTH = 0.6f; // Shallower than this is no place for a salmon
     constexpr float CATCH_DISTANCE = 1.5f;  // Where a biting fish surfaces, in front of the bear
     constexpr float POOL_CATCH_RANGE = 20.0f + CONTACT_DISTANCE; // The core's search range for a bobber
-    constexpr float MAX_ANCHOR_DRIFT = 2.5f; // Moving further than this from where you roared ends it
+    constexpr float MAX_ANCHOR_DRIFT = 2.5f; // Moving further than this from where you started ends it
     constexpr Milliseconds OWNER_CHECK_INTERVAL = 500ms;
 
     struct Config
     {
         bool enabled = true;
-        uint32 startEmote = TEXT_EMOTE_ROAR;
+        uint32 spellId = 90060;     // Salmon Run, the relics' Use effect
+        uint32 startEmote = 0;
         bool sitWhileWaiting = true;
         uint32 biteDelayMin = 5000;
         uint32 biteDelayMax = 15000;
@@ -584,14 +588,26 @@ namespace
         return fish;
     }
 
-    // /roar: start a fishing session, or say why not. Druids who aren't in Bear Form with a relic on
-    // get no reply, so roaring stays just roaring for everyone else.
-    void TryStartFishing(Player* player)
+    // Salmon Run (using the relic) or the start emote: start a fishing session, or say why not.
+    // Using the relic again while fishing stops. The emote gives no reply to druids who aren't in Bear Form with a relic
+    // on, so it stays just an emote for everyone else.
+    void TryStartFishing(Player* player, bool fromSpell)
     {
-        if (!IsBear(player) || !HasSalmonRelic(player))
-            return;
-
         ChatHandler chat(player->GetSession());
+
+        if (!IsBear(player))
+        {
+            if (fromSpell)
+                chat.SendNotification("Take Bear Form first.");
+            return;
+        }
+
+        if (!HasSalmonRelic(player))
+        {
+            if (fromSpell)
+                chat.SendNotification("You need a salmon relic on.");
+            return;
+        }
 
         if (!player->HasSkill(SKILL_FISHING))
         {
@@ -599,8 +615,13 @@ namespace
             return;
         }
 
-        if (GetCurrentSalmon(player))
+        if (Creature* fish = GetCurrentSalmon(player))
+        {
+            if (fromSpell)
+                if (auto* ai = dynamic_cast<npc_swipe_fishing_salmon*>(fish->AI()))
+                    ai->End(player, "You stop fishing.");
             return;
+        }
 
         if (!IsInWater(player))
         {
@@ -631,6 +652,10 @@ namespace
 
         if (!SpawnSalmon(player, spot, player->GetPosition()))
             return;
+
+        // The emote plays its own roar; the spell has no visual, so the bear roars here.
+        if (fromSpell)
+            player->HandleEmoteCommand(EMOTE_ONESHOT_ROAR);
 
         if (config.sitWhileWaiting)
             player->SetStandState(UNIT_STAND_STATE_SIT);
@@ -670,7 +695,8 @@ public:
     void OnBeforeConfigLoad(bool /*reload*/) override
     {
         config.enabled         = sConfigMgr->GetOption<bool>("SwipeFishing.Enable", true);
-        config.startEmote      = sConfigMgr->GetOption<uint32>("SwipeFishing.StartEmote", TEXT_EMOTE_ROAR);
+        config.spellId         = sConfigMgr->GetOption<uint32>("SwipeFishing.SpellId", 90060);
+        config.startEmote      = sConfigMgr->GetOption<uint32>("SwipeFishing.StartEmote", 0);
         config.sitWhileWaiting = sConfigMgr->GetOption<bool>("SwipeFishing.SitWhileWaiting", true);
         config.biteDelayMin    = sConfigMgr->GetOption<uint32>("SwipeFishing.BiteDelayMin", 5000);
         config.biteDelayMax    = sConfigMgr->GetOption<uint32>("SwipeFishing.BiteDelayMax", 15000);
@@ -690,12 +716,23 @@ public:
 class SwipeFishingPlayerScript : public PlayerScript
 {
 public:
-    SwipeFishingPlayerScript() : PlayerScript("SwipeFishingPlayerScript", { PLAYERHOOK_ON_TEXT_EMOTE, PLAYERHOOK_ON_BEFORE_SEND_LOOT }) { }
+    SwipeFishingPlayerScript() : PlayerScript("SwipeFishingPlayerScript", {
+        PLAYERHOOK_ON_TEXT_EMOTE,
+        PLAYERHOOK_ON_BEFORE_SEND_LOOT,
+        PLAYERHOOK_ON_SPELL_CAST,
+    }) { }
 
     void OnPlayerTextEmote(Player* player, uint32 textEmote, uint32 /*emoteNum*/, ObjectGuid /*guid*/) override
     {
-        if (config.enabled && textEmote == config.startEmote)
-            TryStartFishing(player);
+        if (config.enabled && config.startEmote && textEmote == config.startEmote)
+            TryStartFishing(player, false);
+    }
+
+    // Salmon Run is the relics' Use effect; the client only offers it in Bear Form.
+    void OnPlayerSpellCast(Player* player, Spell* spell, bool /*skipCheck*/) override
+    {
+        if (config.enabled && config.spellId && spell->GetSpellInfo()->Id == config.spellId)
+            TryStartFishing(player, true);
     }
 
     // Achievements and statistics count fish by the loot's type, and opening a body by hand makes
