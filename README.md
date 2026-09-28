@@ -1,10 +1,10 @@
 # Swipe Fishing
 
 An [AzerothCore](https://www.azerothcore.org/) (WotLK 3.3.5a) module: druids fish like bears. No
-pole, no bobber, just claws. No client patch needed.
+pole, no bobber, just claws.
 
-Put on a salmon relic, take Bear Form, wade into water facing deeper water, and `/roar`. The bear
-sits and watches the water. A salmon waits under the surface in front of you. When it bites,
+Put on a salmon relic, take Bear Form, wade into water facing deeper water, and **use the relic**
+(Salmon Run). The bear roars, sits and watches the water. A salmon waits under the surface in front of you. When it bites,
 it surfaces at your feet with a splash and the fishing bobber's bite sound, and you have 2 seconds
 to **target it and Swipe** (Swipe needs a target; target the fish while you wait):
 
@@ -13,7 +13,25 @@ to **target it and Swipe** (Swipe needs a target; target the fish while you wait
 - **Swipe too early** and you scare it off for a few seconds.
 - **Too late** and it gets away; wait for the next bite.
 
-The fishing goes on, one bite after another, until you move, leave the water or leave Bear Form.
+The fishing goes on, one bite after another, until you move, leave the water or leave Bear Form,
+or use the relic again.
+
+## Salmon Run
+
+Every salmon relic has it as its Use effect:
+
+> Use: Call the salmon. Wade into the water and watch; when a salmon surfaces with a splash, Swipe
+> it before it gets away. Use again to stop fishing.
+
+- Use the relic from the character window, or put it on an action bar: drag it from the character
+  window, or make a `/use 18` macro (18 is the relic slot).
+- Instant, no cost, the normal global cooldown.
+- Bear Form or Dire Bear Form only, like Swipe; in other forms the client says so.
+- Not in combat. It works while sitting, so using the relic again stops the fishing.
+
+It's a new spell (90060), so players need the realm's client patch; see [Client patch](#client-patch).
+Before Salmon Run, `/roar` started the fishing. `SwipeFishing.StartEmote = 75` brings that back,
+alongside the relic.
 
 If your client's Auto Loot option is on, it takes everything as soon as the window opens; turn it
 off (or hold Shift) to pick. The server can't change that.
@@ -34,7 +52,7 @@ off (or hold Shift) to pick. The server can't change that.
 
 Pools (schools of fish) work as they do for a bobber:
 
-- Roar with a pool within 12 yards and the salmon waits in the middle of the pool instead of in
+- Start fishing with a pool within 12 yards and the salmon waits in the middle of the pool instead of in
   front of you.
 - A salmon in a pool is a **sure catch**, and it opens the **pool's own loot**, like a bobber in a
   pool.
@@ -73,8 +91,9 @@ skill and the character level that rank needs.
 You can hand in the relic you're wearing; there's no need to take it off first. A druid who's
 already past several ranks can do the quests back to back.
 
-## Without a client patch
+## What needs the client patch, and what doesn't
 
+- **Salmon Run** is the one thing that does. See [Client patch](#client-patch).
 - **Swipe, not Fishing.** The 3.3.5 client refuses to cast Fishing in Bear Form or without a
   pole, so the druid never casts it: the salmon is a creature, and a Swipe while it bites
   catches it.
@@ -122,7 +141,39 @@ folder name. Re-run CMake, rebuild, and copy `conf/mod_swipe_fishing.conf.dist` 
   `BiteSound`. Old names are ignored and the defaults apply. `CatchWindow` now counts from the
   splash; its default went from 1500 to 2000.
 
+- **From the /roar version:** `mod_swipe_fishing_2026_09_28_00.sql` adds Salmon Run, puts it on
+  the relics as their Use effect, and rewrites Tavar's first quest to match. Add `SwipeFishing.SpellId = 90060` to your
+  `mod_swipe_fishing.conf`, and set `SwipeFishing.StartEmote = 0` there unless you want `/roar` to
+  keep working too (the old conf has 75). Ship the new client patch before or with the server
+  update.
+
 Rebuild the worldserver either way: the C++ changed.
+
+## Client patch
+
+The 3.3.5 client only casts spells in its own `Spell.dbc`, and a patch MPQ replaces the whole
+file, so Salmon Run has to go into the `Spell.dbc` your realm patch already ships.
+`client/build_patch.py` adds it. It needs Python 3 and [StormLib](https://github.com/ladislav-zezula/StormLib):
+
+```bash
+python3 client/build_patch.py --from-mpq patch-P.MPQ --out patch-P.MPQ.new
+```
+
+That keeps everything else in the patch. If your realm has no patch with a `Spell.dbc` yet, start
+from the client's own:
+
+```bash
+python3 client/build_patch.py --dbc Spell.dbc --out patch-P.MPQ
+```
+
+Players put the MPQ in `World of Warcraft/Data/`. Without it the relic has no Use line and
+can't start fishing.
+
+If you change the spell in the script, regenerate the server's row:
+
+```bash
+python3 client/build_patch.py --from-mpq patch-P.MPQ.new --sql
+```
 
 ## Settings
 
@@ -131,6 +182,8 @@ Everything is in `mod_swipe_fishing.conf.dist`, with defaults:
 | Setting | Default | What it does |
 |---|---|---|
 | `SwipeFishing.Enable` | 1 | Master switch for the minigame |
+| `SwipeFishing.SpellId` | 90060 | Salmon Run, the relics' Use effect that starts and stops fishing; 0 for none |
+| `SwipeFishing.StartEmote` | 0 | A text emote that also starts fishing (75 is `/roar`); 0 for none |
 | `SwipeFishing.SitWhileWaiting` | 1 | The bear sits while it waits |
 | `SwipeFishing.BiteDelayMin` / `Max` | 5000 / 15000 | Time until a salmon bites, in ms |
 | `SwipeFishing.CatchWindow` | 2000 | How long after the splash you can Swipe, in ms |
@@ -139,7 +192,7 @@ Everything is in `mod_swipe_fishing.conf.dist`, with defaults:
 | `SwipeFishing.MinCatchChance` | 50 | Lowest catch chance, in %; 0 for pure fishing rules |
 | `SwipeFishing.CorpseSeconds` | 60 | How long a caught salmon stays for looting |
 | `SwipeFishing.SpotDistance` | 4.5 | How far in front of you the salmon waits, in yards |
-| `SwipeFishing.PoolReach` | 12 | A pool this close when you roar is where the salmon waits |
+| `SwipeFishing.PoolReach` | 12 | A pool this close when you start is where the salmon waits |
 | `SwipeFishing.BiteSound` / `SplashSpell` | 3355 / 69665 | Sound and visual of the bite, 0 for none |
 
 ## Turning it off
@@ -150,8 +203,8 @@ To remove the module completely:
 
 1. Delete the module folder and rebuild.
 2. Run `data/sql/uninstall/mod_swipe_fishing_uninstall_world.sql` on the world database by hand;
-   AzerothCore doesn't run it. It removes the creatures, quests and script bindings, and restores
-   the original rows of every item the module reused.
+   AzerothCore doesn't run it. It removes the creatures, quests, script bindings and Salmon Run,
+   and restores the original rows of every item the module reused.
 
 ## Limits and untested parts
 
@@ -161,6 +214,8 @@ yet. Things to check in game:
 - Tavar's spot comes from terrain data, not from standing there. If he's inside a rock or in the
   lake, move him with `.npc move`.
 - Does the bear sit in shallow water, and does Swiping stand it up?
+- Does the relic's Use line show, can it be used in Bear Form (and not outside it), and does the
+  roar animation play before the bear sits?
 - Is the 2 second window after the splash right?
 - Does the water burst (69665) show well?
 - Do the reused relic numbers show the right icon and equip in the relic slot in your client?
