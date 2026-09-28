@@ -77,6 +77,7 @@ namespace
     constexpr float CATCH_DISTANCE = 1.5f;  // Where a biting fish surfaces, in front of the bear
     constexpr float POOL_CATCH_RANGE = 20.0f + CONTACT_DISTANCE; // The core's search range for a bobber
     constexpr float MAX_ANCHOR_DRIFT = 2.5f; // Moving further than this from where you started ends it
+    constexpr float SWIPE_REACH_SLACK = MAX_ANCHOR_DRIFT + 1.0f; // Swipe reach beyond the fish's distance
     constexpr Milliseconds OWNER_CHECK_INTERVAL = 500ms;
 
     struct Config
@@ -333,6 +334,14 @@ struct npc_swipe_fishing_salmon : public CreatureAI
         _owner = owner->GetGUID();
         _anchor = anchor;
         _spot = me->GetPosition();
+
+        // Swipe needs its target in melee range, about 5 yards, and a salmon waiting in a pool can
+        // be 12 away: the client said "Target is too far away" before the server ever saw the
+        // Swipe. Stretch the fish's reach so it's always in range from where the bear started,
+        // plus a little for shuffling; then a Swipe on it is either a catch or "too soon".
+        float const needed = owner->GetExactDist(&_spot) + SWIPE_REACH_SLACK - owner->GetCombatReach() - 4.0f / 3.0f;
+        if (needed > me->GetCombatReach())
+            me->SetFloatValue(UNIT_FIELD_COMBATREACH, needed);
 
         me->SetReactState(REACT_PASSIVE);
         me->SetDisableGravity(true);

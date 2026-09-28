@@ -6,7 +6,8 @@ pole, no bobber, just claws.
 Put on a salmon relic, take Bear Form, wade into water facing deeper water, and **use the relic**
 (Salmon Run). The bear roars, sits and watches the water. A salmon waits under the surface in front of you. When it bites,
 it surfaces at your feet with a splash and the fishing bobber's bite sound, and you have 2 seconds
-to **target it and Swipe** (Swipe needs a target; target the fish while you wait):
+to **target it and Swipe** (Swipe needs a target; target the fish while you wait). Your salmon is
+always within Swipe's reach, even out in the middle of a pool:
 
 - **In time** and you catch it. The loot window opens with whatever normal fishing would give in
   that spot. If you close it, loot the salmon's body for the rest.
