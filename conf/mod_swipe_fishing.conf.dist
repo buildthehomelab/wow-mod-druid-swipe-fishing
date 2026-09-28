@@ -74,6 +74,19 @@ SwipeFishing.CatchWindow = 2000
 SwipeFishing.SpookDelay = 6000
 
 #
+#    SwipeFishing.SettleTime
+#        Description: For this many milliseconds after a bite ends (caught, slipped away, got away
+#                     or spooked), and after a new salmon takes over, a Swipe is ignored instead of
+#                     counting as too soon. It stops a second press right after the one that
+#                     caught the fish from spooking the next one: Swipe can be free (mod-forever-
+#                     druid), and the core queues a press made near the end of the global
+#                     cooldown. Never longer than BiteDelayMin.
+#        Default:     2000
+#
+
+SwipeFishing.SettleTime = 2000
+
+#
 #    SwipeFishing.RageOnBite
 #        Description: A bear out of combat has no rage, so a bite tops you up to this much rage
 #                     (not added on top) so you can Swipe. 0 turns it off.
