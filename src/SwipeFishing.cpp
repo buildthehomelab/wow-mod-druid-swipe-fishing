@@ -268,6 +268,26 @@ namespace
         }
     }
 
+    // What fishing this pool gives, on the salmon's body: the pool's own loot and money, as the core
+    // gives a bobber in a pool (Player::SendLoot, fishing hole). It also counts for "fish in" pool
+    // achievements and uses up one of the pool's catches; the last one makes it despawn, and the
+    // pool system brings it back elsewhere, as after a bobber's last catch.
+    void FillPoolLoot(Creature* fish, Player* player, GameObject* pool)
+    {
+        fish->loot.clear();
+
+        if (uint32 lootId = pool->GetGOInfo()->GetLootId())
+            fish->loot.FillLoot(lootId, LootTemplates_Gameobject, player, true, true, pool->GetLootMode(), pool);
+        if (GameObjectTemplateAddon const* addon = pool->GetTemplateAddon())
+            fish->loot.generateMoneyLoot(addon->mingold, addon->maxgold);
+
+        player->UpdateAchievementCriteria(ACHIEVEMENT_CRITERIA_TYPE_FISH_IN_GAMEOBJECT, pool->GetEntry());
+
+        pool->AddUse();
+        if (pool->GetUseCount() >= pool->GetGOValue()->FishingHole.MaxOpens)
+            pool->SetLootState(GO_JUST_DEACTIVATED);
+    }
+
     void Notify(Player* player, char const* text)
     {
         player->GetSession()->SendAreaTriggerMessage(text);
@@ -431,29 +451,25 @@ struct npc_swipe_fishing_salmon : public CreatureAI
         if (!owner)
             return;
 
-        // Caught in a pool: open the pool's loot, as the core does for a bobber. Closing it uses
-        // up one of the pool's catches.
+        // Unit::Kill has already cleared the (empty) creature loot. The catch goes on the salmon's
+        // body: the pool's loot if it was caught in one, else the zone's fishing loot. (Opening the
+        // pool itself, as a bobber does, gave an empty window in game.)
         GameObject* pool = _poolCatch ? ObjectAccessor::GetGameObject(*me, _poolCatch) : nullptr;
         if (pool && pool->isSpawned())
+            FillPoolLoot(me, owner, pool);
+        else
+            FillFishLoot(me, owner);
+
+        if (!me->loot.empty())
         {
-            pool->Use(owner);
-            me->DespawnOrUnsummon(3s);
+            me->SetDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
+            me->SetCorpseRemoveTime(config.corpseSeconds);
+
+            // Open it as fishing loot, as a bobber does, so the catch counts as fishing.
+            owner->SendLoot(me->GetGUID(), LOOT_FISHING);
         }
         else
-        {
-            // Unit::Kill has already cleared the (empty) creature loot; the catch is fishing loot.
-            FillFishLoot(me, owner);
-            if (!me->loot.empty())
-            {
-                me->SetDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
-                me->SetCorpseRemoveTime(config.corpseSeconds);
-
-                // Open it as fishing loot, as a bobber does, so the catch counts as fishing.
-                owner->SendLoot(me->GetGUID(), LOOT_FISHING);
-            }
-            else
-                me->DespawnOrUnsummon();
-        }
+            me->DespawnOrUnsummon();
 
         // A fresh salmon takes its place in the water.
         if (CanKeepFishing(owner, _anchor))

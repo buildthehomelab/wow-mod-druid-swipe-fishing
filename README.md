@@ -54,8 +54,8 @@ Pools (schools of fish) work as they do for a bobber:
 
 - Start fishing with a pool within 12 yards and the salmon waits in the middle of the pool instead of in
   front of you.
-- A salmon in a pool is a **sure catch**, and it opens the **pool's own loot**, like a bobber in a
-  pool.
+- A salmon in a pool is a **sure catch**, and its body holds the **pool's own loot**, like a bobber
+  in a pool.
 - Each catch uses up one of the pool's catches. When it's empty the pool despawns and moves on as
   usual, and the next salmon gives the zone's ordinary fishing loot.
 
