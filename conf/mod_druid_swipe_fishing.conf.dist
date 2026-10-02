@@ -39,14 +39,6 @@ SwipeFishing.SpellId = 90060
 SwipeFishing.StartEmote = 0
 
 #
-#    SwipeFishing.SitWhileWaiting
-#        Description: The bear sits down while it waits for a bite. Swiping stands it up.
-#        Default:     1
-#
-
-SwipeFishing.SitWhileWaiting = 1
-
-#
 #    SwipeFishing.BiteDelayMin
 #    SwipeFishing.BiteDelayMax
 #        Description: How long until a salmon bites (the splash), picked at random between the

@@ -4,7 +4,7 @@ An [AzerothCore](https://www.azerothcore.org/) (WotLK 3.3.5a) module: druids fis
 pole, no bobber, just claws.
 
 Put on a salmon relic, take Bear Form, wade into water facing deeper water, and **use the relic**
-(Salmon Run). The bear roars, sits and watches the water. A salmon waits under the surface in front of you. When it bites,
+(Salmon Run). The bear roars and watches the water. A salmon waits under the surface in front of you. When it bites,
 it surfaces at your feet with a splash and the fishing bobber's bite sound, and you have 2 seconds
 to **target it and Swipe** (Swipe needs a target; target the fish while you wait). Your salmon is
 always within Swipe's reach, even out in the middle of a pool:
@@ -29,7 +29,7 @@ Every salmon relic has it as its Use effect:
   window, or make a `/use 18` macro (18 is the relic slot).
 - Instant, no cost, the normal global cooldown.
 - Bear Form or Dire Bear Form only, like Swipe; in other forms the client says so.
-- Not in combat. It works while sitting, so using the relic again stops the fishing.
+- Not in combat. Using the relic again stops the fishing.
 
 It's a new spell (90060), so players need the realm's client patch; see [Client patch](#client-patch).
 Before Salmon Run, `/roar` started the fishing. `SwipeFishing.StartEmote = 75` brings that back,
@@ -201,7 +201,6 @@ Everything is in `mod_druid_swipe_fishing.conf.dist`, with defaults:
 | `SwipeFishing.Enable` | 1 | Master switch for the minigame |
 | `SwipeFishing.SpellId` | 90060 | Salmon Run, the relics' Use effect that starts and stops fishing; 0 for none |
 | `SwipeFishing.StartEmote` | 0 | A text emote that also starts fishing (75 is `/roar`); 0 for none |
-| `SwipeFishing.SitWhileWaiting` | 1 | The bear sits while it waits |
 | `SwipeFishing.BiteDelayMin` / `Max` | 5000 / 15000 | Time until a salmon bites, in ms |
 | `SwipeFishing.CatchWindow` | 2000 | How long after the splash you can Swipe, in ms |
 | `SwipeFishing.SpookDelay` | 6000 | Extra wait after Swiping too early, in ms |
@@ -231,9 +230,8 @@ yet. Things to check in game:
 
 - Tavar's spot comes from terrain data, not from standing there. If he's inside a rock or in the
   lake, move him with `.npc move`.
-- Does the bear sit in shallow water, and does Swiping stand it up?
 - Does the relic's Use line show, can it be used in Bear Form (and not outside it), and does the
-  roar animation play before the bear sits?
+  roar animation play?
 - Is the 2 second window after the splash right?
 - Does the water burst (69665) show well?
 - Do the reused relic numbers show the right icon and equip in the relic slot in your client?

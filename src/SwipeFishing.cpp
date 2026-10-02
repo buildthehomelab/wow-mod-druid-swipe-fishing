@@ -85,7 +85,6 @@ namespace
         bool enabled = true;
         uint32 spellId = 90060;     // Salmon Run, the relics' Use effect
         uint32 startEmote = 0;
-        bool sitWhileWaiting = true;
         uint32 biteDelayMin = 5000;
         uint32 biteDelayMax = 15000;
         uint32 catchWindow = 2000;
@@ -521,8 +520,6 @@ struct npc_swipe_fishing_salmon : public CreatureAI
             if (message)
                 Notify(owner, message);
 
-            if (owner->IsSitState())
-                owner->SetStandState(UNIT_STAND_STATE_STAND);
         }
 
         if (me->IsAlive())
@@ -703,9 +700,6 @@ namespace
         if (fromSpell)
             player->HandleEmoteCommand(EMOTE_ONESHOT_ROAR);
 
-        if (config.sitWhileWaiting)
-            player->SetStandState(UNIT_STAND_STATE_SIT);
-
         Notify(player, "You settle in and watch the water...");
     }
 }
@@ -743,7 +737,6 @@ public:
         config.enabled         = sConfigMgr->GetOption<bool>("SwipeFishing.Enable", true);
         config.spellId         = sConfigMgr->GetOption<uint32>("SwipeFishing.SpellId", 90060);
         config.startEmote      = sConfigMgr->GetOption<uint32>("SwipeFishing.StartEmote", 0);
-        config.sitWhileWaiting = sConfigMgr->GetOption<bool>("SwipeFishing.SitWhileWaiting", true);
         config.biteDelayMin    = sConfigMgr->GetOption<uint32>("SwipeFishing.BiteDelayMin", 5000);
         config.biteDelayMax    = sConfigMgr->GetOption<uint32>("SwipeFishing.BiteDelayMax", 15000);
         config.catchWindow     = sConfigMgr->GetOption<uint32>("SwipeFishing.CatchWindow", 2000);
