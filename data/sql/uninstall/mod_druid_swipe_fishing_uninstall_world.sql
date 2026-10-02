@@ -1,4 +1,4 @@
--- mod-swipe-fishing: uninstall, world database. Not run automatically: AzerothCore only runs a
+-- mod-druid-swipe-fishing: uninstall, world database. Not run automatically: AzerothCore only runs a
 -- module's SQL from data/sql/db-world and similar folders. Run it by hand after removing the module.
 --
 -- Removes the salmon, Tavar Riverclaw and his spawn, the quests and the spell script bindings, and
@@ -57,6 +57,6 @@ VALUES
 (42576,4,8,-1,'Savage Gladiator''s Idol of Tenacity',9659,3,36864,0,1,0,0,28,-1,-1,200,80,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,60733,1,0,0,-1,0,-1,0,0,0,0,-1,0,-1,0,0,0,0,-1,0,-1,0,0,0,0,-1,0,-1,0,0,0,0,-1,0,-1,1,'',0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,'',0,0,0,0,0,1),
 (42577,4,8,-1,'Hateful Gladiator''s Idol of Tenacity',9659,4,0,0,1,0,0,28,-1,-1,200,80,0,0,0,0,0,0,0,0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,60736,1,0,0,-1,0,-1,0,0,0,0,-1,0,-1,0,0,0,0,-1,0,-1,0,0,0,0,-1,0,-1,0,0,0,0,-1,0,-1,1,'',0,0,0,0,0,2,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,-1,0,0,0,0,'',0,0,0,0,0,1);
 
--- Salmon Run, the relics' Use effect (from mod_swipe_fishing_2026_09_28_00.sql). The relic rows
+-- Salmon Run, the relics' Use effect (from mod_druid_swipe_fishing_2026_09_28_00.sql). The relic rows
 -- above are restored whole, so they lose it too.
 DELETE FROM `spell_dbc` WHERE `ID` = 90060;

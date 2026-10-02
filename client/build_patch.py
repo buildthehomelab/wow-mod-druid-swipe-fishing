@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-mod-swipe-fishing: adds Salmon Run, the salmon relics' Use effect, to a 3.3.5a client's Spell.dbc
+mod-druid-swipe-fishing: adds Salmon Run, the salmon relics' Use effect, to a 3.3.5a client's Spell.dbc
 and packs it into an MPQ.
 
 The 3.3.5 client only casts spells in its own Spell.dbc, and a patch MPQ replaces the whole
@@ -220,7 +220,7 @@ def pack(out, files):
 
 
 def build_mpq(src_mpq, out):
-    folder = tempfile.mkdtemp(prefix="swipe-fishing-")
+    folder = tempfile.mkdtemp(prefix="druid-swipe-fishing-")
     try:
         files = extract_all(src_mpq, folder)
         spell = next((f for f in files if f[1].lower() == "dbfilesclient\\spell.dbc"), None)
@@ -247,7 +247,7 @@ def main():
     if args.sql:
         dbc = args.dbc
         if not dbc and args.from_mpq:
-            folder = tempfile.mkdtemp(prefix="swipe-fishing-")
+            folder = tempfile.mkdtemp(prefix="druid-swipe-fishing-")
             files = extract_all(args.from_mpq, folder)
             dbc = next(f[0] for f in files if f[1].lower() == "dbfilesclient\\spell.dbc")
         if not dbc:
@@ -258,7 +258,7 @@ def main():
     elif args.dbc and args.out_dbc:
         add_spell(args.dbc, args.out_dbc)
     elif args.dbc and args.out:
-        folder = tempfile.mkdtemp(prefix="swipe-fishing-")
+        folder = tempfile.mkdtemp(prefix="druid-swipe-fishing-")
         try:
             spell = os.path.join(folder, "Spell.dbc")
             add_spell(args.dbc, spell)

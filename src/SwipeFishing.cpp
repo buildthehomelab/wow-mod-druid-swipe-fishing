@@ -1,5 +1,5 @@
 /*
- * mod-swipe-fishing
+ * mod-druid-swipe-fishing
  *
  * Druids fish like bears: no pole, just claws. A druid in Bear Form, standing in water with a
  * salmon relic on, uses the relic (Salmon Run) and waits. A salmon waits under the surface in front of them;
@@ -85,7 +85,6 @@ namespace
         bool enabled = true;
         uint32 spellId = 90060;     // Salmon Run, the relics' Use effect
         uint32 startEmote = 0;
-        bool sitWhileWaiting = true;
         uint32 biteDelayMin = 5000;
         uint32 biteDelayMax = 15000;
         uint32 catchWindow = 2000;
@@ -111,7 +110,7 @@ namespace
 
     SwipeFishingData* GetFishingData(Player* player)
     {
-        return player->CustomData.GetDefault<SwipeFishingData>("mod-swipe-fishing");
+        return player->CustomData.GetDefault<SwipeFishingData>("mod-druid-swipe-fishing");
     }
 
     bool IsBear(Unit const* unit)
@@ -200,8 +199,15 @@ namespace
         if (!pool || !player->IsWithinLOSInMap(pool))
             return false;
 
-        spot.Relocate(pool->GetPositionX(), pool->GetPositionY(), pool->GetPositionZ() - FISH_DEPTH,
-            pool->GetAbsoluteAngle(player));
+        // Under the water's surface, not the pool object's: a pool's spawn can sit above the water,
+        // and the fish showed on top of it.
+        float z = pool->GetPositionZ();
+        LiquidData const liquid = player->GetMap()->GetLiquidData(player->GetPhaseMask(), pool->GetPositionX(),
+            pool->GetPositionY(), player->GetPositionZ(), player->GetCollisionHeight(), WATER_LIQUIDS);
+        if ((liquid.Status & MAP_LIQUID_STATUS_SWIMMING) && liquid.Level > INVALID_HEIGHT)
+            z = liquid.Level;
+
+        spot.Relocate(pool->GetPositionX(), pool->GetPositionY(), z - FISH_DEPTH, pool->GetAbsoluteAngle(player));
         return true;
     }
 
@@ -344,6 +350,11 @@ struct npc_swipe_fishing_salmon : public CreatureAI
             me->SetFloatValue(UNIT_FIELD_COMBATREACH, needed);
 
         me->SetReactState(REACT_PASSIVE);
+
+        // Swimming, always: the core only calls a creature swimming in water deeper than most of
+        // its height, and a fish that isn't stands upright in its idle pose, poking out of the
+        // surface. The SQL gives it NO_MOVE_FLAGS_UPDATE so the core leaves these alone.
+        me->SetSwim(true);
         me->SetDisableGravity(true);
 
         _events.ScheduleEvent(EVENT_CHECK_OWNER, OWNER_CHECK_INTERVAL);
@@ -509,8 +520,6 @@ struct npc_swipe_fishing_salmon : public CreatureAI
             if (message)
                 Notify(owner, message);
 
-            if (owner->IsSitState())
-                owner->SetStandState(UNIT_STAND_STATE_STAND);
         }
 
         if (me->IsAlive())
@@ -691,9 +700,6 @@ namespace
         if (fromSpell)
             player->HandleEmoteCommand(EMOTE_ONESHOT_ROAR);
 
-        if (config.sitWhileWaiting)
-            player->SetStandState(UNIT_STAND_STATE_SIT);
-
         Notify(player, "You settle in and watch the water...");
     }
 }
@@ -731,7 +737,6 @@ public:
         config.enabled         = sConfigMgr->GetOption<bool>("SwipeFishing.Enable", true);
         config.spellId         = sConfigMgr->GetOption<uint32>("SwipeFishing.SpellId", 90060);
         config.startEmote      = sConfigMgr->GetOption<uint32>("SwipeFishing.StartEmote", 0);
-        config.sitWhileWaiting = sConfigMgr->GetOption<bool>("SwipeFishing.SitWhileWaiting", true);
         config.biteDelayMin    = sConfigMgr->GetOption<uint32>("SwipeFishing.BiteDelayMin", 5000);
         config.biteDelayMax    = sConfigMgr->GetOption<uint32>("SwipeFishing.BiteDelayMax", 15000);
         config.catchWindow     = sConfigMgr->GetOption<uint32>("SwipeFishing.CatchWindow", 2000);
