@@ -1,4 +1,4 @@
-# Swipe Fishing
+# Druid Swipe Fishing
 
 An [AzerothCore](https://www.azerothcore.org/) (WotLK 3.3.5a) module: druids fish like bears. No
 pole, no bobber, just claws.
@@ -117,18 +117,33 @@ already past several ranks can do the quests back to back.
 
 ```bash
 cd azerothcore-wotlk/modules
-git clone https://github.com/buildthehomelab/wow-mod-swipe-fishing.git mod-swipe-fishing
+git clone https://github.com/buildthehomelab/wow-mod-druid-swipe-fishing.git mod-druid-swipe-fishing
 ```
 
-Clone into `mod-swipe-fishing` exactly: AzerothCore derives the loader function's name from the
-folder name. Re-run CMake, rebuild, and copy `conf/mod_swipe_fishing.conf.dist` to
-`mod_swipe_fishing.conf` in your config folder. The world database SQL in
+Clone into `mod-druid-swipe-fishing` exactly: AzerothCore derives the loader function's name from the
+folder name. Re-run CMake, rebuild, and copy `conf/mod_druid_swipe_fishing.conf.dist` to
+`mod_druid_swipe_fishing.conf` in your config folder. The world database SQL in
 `data/sql/db-world/updates` runs automatically on the next worldserver start.
 
 ### Upgrading from older versions
 
+- **From mod-swipe-fishing** (the module's old name, repo `wow-mod-swipe-fishing`): replace the
+  old folder with the new one; don't keep both, or the scripts register twice.
+
+  ```bash
+  cd azerothcore-wotlk/modules
+  rm -rf mod-swipe-fishing
+  git clone https://github.com/buildthehomelab/wow-mod-druid-swipe-fishing.git mod-druid-swipe-fishing
+  ```
+
+  Rename your `mod_swipe_fishing.conf` to `mod_druid_swipe_fishing.conf`; the setting names
+  haven't changed. The SQL files were renamed but not edited, and AzerothCore recognizes a renamed
+  update by its contents: it logs "Renaming update ..." and doesn't run it again. Only
+  `_2026_09_28_01` is new. It keeps the waiting salmon swimming, so it no longer stands upright
+  out of shallow water.
+
 - **From the gear version** (helm, pants, off-hand and Idol of Voracity):
-  `mod_swipe_fishing_2026_09_26_04.sql` removes that gear and its quests, puts the reused items'
+  `mod_druid_swipe_fishing_2026_09_26_04.sql` removes that gear and its quests, puts the reused items'
   original rows back, and adds the relics and their quests. The quests have new numbers, so
   druids who did the old chain can do the new one. The Idol of Voracity's item number becomes
   the Grand Master relic, the Voracious Salmon, so anyone who had the idol now has that (level 65
@@ -138,14 +153,14 @@ folder name. Re-run CMake, rebuild, and copy `conf/mod_swipe_fishing.conf.dist` 
   SQL (`_01` and `_02`), `_03` and then `_04` bring the minigame back with the relics.
 
 - **From the leaping-salmon version:** `_05` and `_06` stop the leap (the fish surfaces at your
-  feet with a splash instead). In your `mod_swipe_fishing.conf`, `RequireRelic` and `RippleSpell`
+  feet with a splash instead). In your `mod_druid_swipe_fishing.conf`, `RequireRelic` and `RippleSpell`
   are gone (a relic is always needed), and `RageOnLeap` and `LeapSound` are now `RageOnBite` and
   `BiteSound`. Old names are ignored and the defaults apply. `CatchWindow` now counts from the
   splash; its default went from 1500 to 2000.
 
-- **From the /roar version:** `mod_swipe_fishing_2026_09_28_00.sql` adds Salmon Run, puts it on
+- **From the /roar version:** `mod_druid_swipe_fishing_2026_09_28_00.sql` adds Salmon Run, puts it on
   the relics as their Use effect, and rewrites Tavar's first quest to match. Add `SwipeFishing.SpellId = 90060` to your
-  `mod_swipe_fishing.conf`, and set `SwipeFishing.StartEmote = 0` there unless you want `/roar` to
+  `mod_druid_swipe_fishing.conf`, and set `SwipeFishing.StartEmote = 0` there unless you want `/roar` to
   keep working too (the old conf has 75). Ship the new client patch before or with the server
   update.
 
@@ -179,7 +194,7 @@ python3 client/build_patch.py --from-mpq patch-P.MPQ.new --sql
 
 ## Settings
 
-Everything is in `mod_swipe_fishing.conf.dist`, with defaults:
+Everything is in `mod_druid_swipe_fishing.conf.dist`, with defaults:
 
 | Setting | Default | What it does |
 |---|---|---|
@@ -205,7 +220,7 @@ Everything is in `mod_swipe_fishing.conf.dist`, with defaults:
 To remove the module completely:
 
 1. Delete the module folder and rebuild.
-2. Run `data/sql/uninstall/mod_swipe_fishing_uninstall_world.sql` on the world database by hand;
+2. Run `data/sql/uninstall/mod_druid_swipe_fishing_uninstall_world.sql` on the world database by hand;
    AzerothCore doesn't run it. It removes the creatures, quests, script bindings and Salmon Run,
    and restores the original rows of every item the module reused.
 
