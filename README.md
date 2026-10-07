@@ -113,7 +113,14 @@ already past several ranks can do the quests back to back.
 - **Effects.** When a salmon bites you hear the fishing bobber's bite sound and see a water burst.
   That splash is the only one: the fish is quiet while it waits.
 
-## Install
+## Requirements
+
+- [AzerothCore](https://www.azerothcore.org/) wotlk (master) and a WoW 3.3.5a (12340) client.
+- The realm's client patch with the Salmon Run spell (90060) in `Spell.dbc`; see [Client patch](#client-patch).
+  Without it the relic has no Use line and can't start fishing.
+- No other modules. It doesn't use mod-playerbots or mod-individual-progression.
+
+## Installation
 
 ```bash
 cd azerothcore-wotlk/modules
@@ -236,6 +243,22 @@ yet. Things to check in game:
 - Does the water burst (69665) show well?
 - Do the reused relic numbers show the right icon and equip in the relic slot in your client?
 
+## Troubleshooting
+
+- **The relic has no Use line, or Salmon Run does nothing:** the client doesn't have the patch
+  with spell 90060. Build it with `client/build_patch.py`, put the MPQ in `World of Warcraft/Data/`
+  and restart the client. Setting `SwipeFishing.StartEmote = 75` also lets `/roar` start fishing.
+- **Everything is looted the moment the window opens:** the client's Auto Loot option is on. Turn
+  it off (or hold Shift) to pick; the server can't change it.
+- **Tavar Riverclaw is inside a rock or in the lake:** his spot comes from terrain data. Move him
+  with `.npc move`.
+- **The worldserver won't load the module, or the scripts register twice:** the folder must be
+  `mod-druid-swipe-fishing`, and an old `mod-swipe-fishing` folder has to be removed.
+
+## Credits
+
+Author: [buildthehomelab](https://github.com/buildthehomelab)
+
 ## License
 
-MIT
+MIT, see [LICENSE](LICENSE).
