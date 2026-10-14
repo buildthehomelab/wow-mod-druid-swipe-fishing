@@ -31,7 +31,7 @@ Every salmon relic has it as its Use effect:
 - Bear Form or Dire Bear Form only, like Swipe; in other forms the client says so.
 - Not in combat. Using the relic again stops the fishing.
 
-It's a new spell (90060), so players need the realm's client patch; see [Client patch](#client-patch).
+It's a new spell (90060), so players need your realm's client patch; see [Client patch](#client-patch).
 Before Salmon Run, `/roar` started the fishing. `SwipeFishing.StartEmote = 75` brings that back,
 alongside the relic.
 
@@ -116,7 +116,7 @@ already past several ranks can do the quests back to back.
 ## Requirements
 
 - [AzerothCore](https://www.azerothcore.org/) wotlk (master) and a WoW 3.3.5a (12340) client.
-- The realm's client patch with the Salmon Run spell (90060) in `Spell.dbc`; see [Client patch](#client-patch).
+- Your realm's client patch with the Salmon Run spell (90060) in `Spell.dbc`; see [Client patch](#client-patch).
   Without it the relic has no Use line and can't start fishing.
 - No other modules. It doesn't use mod-playerbots or mod-individual-progression.
 
@@ -177,7 +177,7 @@ Rebuild the worldserver either way: the C++ changed.
 
 The 3.3.5 client only casts spells in its own `Spell.dbc`, and a patch MPQ replaces the whole
 file, so Salmon Run has to go into the `Spell.dbc` your realm patch already ships.
-`client/build_patch.py` adds it. It needs Python 3 and [StormLib](https://github.com/ladislav-zezula/StormLib):
+`client/build_patch.py` adds it. `patch-P.MPQ` below is an example name; use your own patch's. It needs Python 3 and [StormLib](https://github.com/ladislav-zezula/StormLib):
 
 ```bash
 python3 client/build_patch.py --from-mpq patch-P.MPQ --out patch-P.MPQ.new
