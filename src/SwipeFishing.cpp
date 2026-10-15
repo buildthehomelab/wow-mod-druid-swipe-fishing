@@ -490,6 +490,10 @@ struct npc_swipe_fishing_salmon : public CreatureAI
 
         if (!me->loot.empty())
         {
+            // Fishing loot from the start, even if the window below can't open: a catch is the
+            // fisher's own (no group rolls), and anything that takes it later, such as a pet that
+            // loots for its owner, counts it as fishing.
+            me->loot.loot_type = LOOT_FISHING;
             me->SetDynamicFlag(UNIT_DYNFLAG_LOOTABLE);
             me->SetCorpseRemoveTime(config.corpseSeconds);
 
