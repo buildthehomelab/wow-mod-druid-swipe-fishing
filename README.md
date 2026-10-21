@@ -134,20 +134,20 @@ folder name. Re-run CMake, rebuild, and copy `conf/mod_druid_swipe_fishing.conf.
 
 ### Upgrading from mod-swipe-fishing
 
-- **From mod-swipe-fishing** (the module's old name, repo `wow-mod-swipe-fishing`): replace the
-  old folder with the new one; don't keep both, or the scripts register twice.
+If you ran mod-swipe-fishing (the module's old name, repo `wow-mod-swipe-fishing`), replace the
+old folder with the new one; don't keep both, or the scripts register twice.
 
-  ```bash
-  cd azerothcore-wotlk/modules
-  rm -rf mod-swipe-fishing
-  git clone https://github.com/buildthehomelab/wow-mod-druid-swipe-fishing.git mod-druid-swipe-fishing
-  ```
+```bash
+cd azerothcore-wotlk/modules
+rm -rf mod-swipe-fishing
+git clone https://github.com/buildthehomelab/wow-mod-druid-swipe-fishing.git mod-druid-swipe-fishing
+```
 
-  Rename your `mod_swipe_fishing.conf` to `mod_druid_swipe_fishing.conf`; the setting names
-  haven't changed. The SQL files were renamed but not edited, and AzerothCore recognizes a renamed
-  update by its contents: it logs "Renaming update ..." and doesn't run it again. Only
-  `_2026_09_28_01` is new. It keeps the waiting salmon swimming, so it no longer stands upright
-  out of shallow water.
+Rename your `mod_swipe_fishing.conf` to `mod_druid_swipe_fishing.conf`; the setting names
+haven't changed. The SQL files were renamed but not edited, and AzerothCore recognizes a renamed
+update by its contents: it logs "Renaming update ..." and doesn't run it again. Only
+`_2026_09_28_01` is new. It keeps the waiting salmon swimming, so it no longer stands upright
+out of shallow water.
 
 ## Client patch
 
@@ -206,7 +206,7 @@ To remove the module completely:
    AzerothCore doesn't run it. It removes the creatures, quests, script bindings and Salmon Run,
    and restores the original rows of every item the module reused.
 
-Not yet checked in a game client: that the relic's Use line shows and works in Bear Form only, the 2 second window after the splash, the water burst (69665), and the icons of the reused relic item numbers.
+Not yet checked in a game client: that the relic's Use line shows and works in Bear Form only, that the roar animation plays, the 2 second window after the splash, the water burst (69665), and the icons of the reused relic item numbers.
 
 ## Troubleshooting
 
