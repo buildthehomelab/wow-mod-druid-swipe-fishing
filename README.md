@@ -132,7 +132,7 @@ folder name. Re-run CMake, rebuild, and copy `conf/mod_druid_swipe_fishing.conf.
 `mod_druid_swipe_fishing.conf` in your config folder. The world database SQL in
 `data/sql/db-world/updates` runs automatically on the next worldserver start.
 
-### Upgrading from older versions
+### Upgrading from mod-swipe-fishing
 
 - **From mod-swipe-fishing** (the module's old name, repo `wow-mod-swipe-fishing`): replace the
   old folder with the new one; don't keep both, or the scripts register twice.
@@ -148,30 +148,6 @@ folder name. Re-run CMake, rebuild, and copy `conf/mod_druid_swipe_fishing.conf.
   update by its contents: it logs "Renaming update ..." and doesn't run it again. Only
   `_2026_09_28_01` is new. It keeps the waiting salmon swimming, so it no longer stands upright
   out of shallow water.
-
-- **From the gear version** (helm, pants, off-hand and Idol of Voracity):
-  `mod_druid_swipe_fishing_2026_09_26_04.sql` removes that gear and its quests, puts the reused items'
-  original rows back, and adds the relics and their quests. The quests have new numbers, so
-  druids who did the old chain can do the new one. The Idol of Voracity's item number becomes
-  the Grand Master relic, the Voracious Salmon, so anyone who had the idol now has that (level 65
-  to wear), without the idol's old effect. Anyone with the old helm, pants or off-hand keeps them
-  as the original placeholder items.
-- **From the pole-less idol version** that briefly replaced the minigame: if your server ran its
-  SQL (`_01` and `_02`), `_03` and then `_04` bring the minigame back with the relics.
-
-- **From the leaping-salmon version:** `_05` and `_06` stop the leap (the fish surfaces at your
-  feet with a splash instead). In your `mod_druid_swipe_fishing.conf`, `RequireRelic` and `RippleSpell`
-  are gone (a relic is always needed), and `RageOnLeap` and `LeapSound` are now `RageOnBite` and
-  `BiteSound`. Old names are ignored and the defaults apply. `CatchWindow` now counts from the
-  splash; its default went from 1500 to 2000.
-
-- **From the /roar version:** `mod_druid_swipe_fishing_2026_09_28_00.sql` adds Salmon Run, puts it on
-  the relics as their Use effect, and rewrites Tavar's first quest to match. Add `SwipeFishing.SpellId = 90060` to your
-  `mod_druid_swipe_fishing.conf`, and set `SwipeFishing.StartEmote = 0` there unless you want `/roar` to
-  keep working too (the old conf has 75). Ship the new client patch before or with the server
-  update.
-
-Rebuild the worldserver either way: the C++ changed.
 
 ## Client patch
 
@@ -230,18 +206,7 @@ To remove the module completely:
    AzerothCore doesn't run it. It removes the creatures, quests, script bindings and Salmon Run,
    and restores the original rows of every item the module reused.
 
-## Limits and untested parts
-
-This is a prototype. It compiles against current AzerothCore, but it hasn't been run on a server
-yet. Things to check in game:
-
-- Tavar's spot comes from terrain data, not from standing there. If he's inside a rock or in the
-  lake, move him with `.npc move`.
-- Does the relic's Use line show, can it be used in Bear Form (and not outside it), and does the
-  roar animation play?
-- Is the 2 second window after the splash right?
-- Does the water burst (69665) show well?
-- Do the reused relic numbers show the right icon and equip in the relic slot in your client?
+Not yet checked in a game client: that the relic's Use line shows and works in Bear Form only, the 2 second window after the splash, the water burst (69665), and the icons of the reused relic item numbers.
 
 ## Troubleshooting
 
